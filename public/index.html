@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OEE Analyse — DW08 Metsä NL Winschoten</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f8f7f5;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --muted: #6b7280;
+    --blue: #2563EB;
+    --blue-light: #dbeafe;
+    --amber: #B45309;
+    --amber-light: #fef3c7;
+    --red: #DC2626;
+    --red-light: #fee2e2;
+    --green: #15803D;
+    --green-light: #dcfce7;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111827;
+      --card: #1f2937;
+      --border: #374151;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --blue-light: #1e3a5f;
+      --amber-light: #451a03;
+      --red-light: #450a0a;
+      --green-light: #052e16;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+  header .logo { font-size: 1.4rem; font-weight: 700; color: var(--blue); letter-spacing: -0.5px; }
+  header .sub { color: var(--muted); font-size: 0.85rem; }
+  .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Upload zone */
+  .upload-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .drop-zone { background: var(--card); border: 2px dashed var(--border); border-radius: 12px; padding: 24px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--blue); background: var(--blue-light); }
+  .drop-zone.loaded { border-color: var(--green); border-style: solid; }
+  .drop-zone .icon { font-size: 2rem; margin-bottom: 8px; }
+  .drop-zone .label { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+  .drop-zone .hint { color: var(--muted); font-size: 0.8rem; }
+  .drop-zone .filename { color: var(--green); font-size: 0.82rem; font-weight: 600; margin-top: 8px; word-break: break-all; }
+  .drop-zone input[type=file] { display: none; }
+
+  .analyse-btn { display: block; width: 100%; padding: 14px; background: var(--blue); color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; margin-bottom: 24px; }
+  .analyse-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .analyse-btn:not(:disabled):hover { opacity: 0.9; }
+
+  /* Loader */
+  .loader { display: none; text-align: center; padding: 48px; }
+  .loader.active { display: block; }
+  .spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error */
+  .error-box { background: var(--red-light); border: 1px solid var(--red); border-radius: 10px; padding: 16px; margin-bottom: 16px; color: var(--red); display: none; }
+  .error-box.active { display: block; }
+
+  /* Dashboard */
+  #dashboard { display: none; }
+  #dashboard.active { display: block; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 20px; background: var(--card); border-radius: 10px; padding: 6px; border: 1px solid var(--border); }
+  .tab-btn { padding: 8px 16px; border: none; background: transparent; border-radius: 7px; font-size: 0.88rem; font-weight: 600; cursor: pointer; color: var(--muted); white-space: nowrap; transition: background 0.15s, color 0.15s; }
+  .tab-btn.active { background: var(--blue); color: #fff; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* KPI row */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
+  .kpi-card .kpi-label { font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .kpi-card .kpi-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+  .kpi-card .kpi-sub { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+  .kpi-blue { border-left: 4px solid var(--blue); }
+  .kpi-green { border-left: 4px solid var(--green); }
+  .kpi-amber { border-left: 4px solid var(--amber); }
+  .kpi-red { border-left: 4px solid var(--red); }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+  .badge-blue { background: var(--blue-light); color: var(--blue); }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-amber { background: var(--amber-light); color: var(--amber); }
+  .badge-red { background: var(--red-light); color: var(--red); }
+
+  /* Score card */
+  .score-ring { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .score-circle { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 800; }
+  .score-high { background: var(--green-light); color: var(--green); }
+  .score-mid { background: var(--amber-light); color: var(--amber); }
+  .score-low { background: var(--red-light); color: var(--red); }
+
+  /* Win card */
+  .win-card { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border: 1px solid #86efac; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  @media (prefers-color-scheme: dark) { .win-card { background: linear-gradient(135deg, #052e16 0%, #14532d 100%); border-color: #166534; } }
+  .win-card .win-title { font-weight: 700; color: var(--green); font-size: 1rem; margin-bottom: 12px; }
+  .win-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .win-label { font-size: 0.88rem; color: var(--green); }
+  .win-value { font-size: 1.5rem; font-weight: 800; color: var(--green); }
+
+  /* Scenario bar */
+  .scenario-bar { margin-bottom: 20px; }
+  .scenario-track { height: 28px; background: var(--border); border-radius: 14px; overflow: hidden; margin: 8px 0; position: relative; }
+  .scenario-fill { height: 100%; border-radius: 14px; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-size: 0.78rem; font-weight: 700; color: #fff; transition: width 1s ease; }
+
+  /* List items */
+  .oorzaak-list { list-style: none; }
+  .oorzaak-list li { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; display: flex; gap: 8px; align-items: flex-start; }
+  .oorzaak-list li:last-child { border-bottom: none; }
+  .oorzaak-list li::before { content: '▸'; color: var(--blue); flex-shrink: 0; }
+
+  /* Steps */
+  .step-list { counter-reset: step; list-style: none; }
+  .step-list li { counter-increment: step; padding: 10px 12px 10px 48px; border-radius: 8px; background: var(--bg); margin-bottom: 8px; font-size: 0.88rem; position: relative; }
+  .step-list li::before { content: counter(step); position: absolute; left: 12px; top: 10px; width: 24px; height: 24px; background: var(--blue); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
+
+  /* Table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .data-table th { background: var(--bg); font-weight: 600; padding: 8px 10px; text-align: left; color: var(--muted); border-bottom: 2px solid var(--border); }
+  .data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .ton-high { color: var(--green); font-weight: 700; }
+  .ton-low { color: var(--red); font-weight: 700; }
+
+  /* Factor bar */
+  .factor-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 0.85rem; }
+  .factor-label { min-width: 160px; font-weight: 600; }
+  .factor-track { flex: 1; height: 18px; background: var(--border); border-radius: 9px; overflow: hidden; position: relative; }
+  .factor-fill { height: 100%; background: var(--blue); border-radius: 9px; transition: width 1s ease; }
+  .factor-fill.goal { background: var(--green); opacity: 0.35; position: absolute; top: 0; left: 0; }
+  .factor-val { min-width: 52px; text-align: right; font-weight: 700; }
+
+  /* Verdict box */
+  .verdict-box { padding: 14px 16px; border-radius: 10px; font-size: 0.9rem; line-height: 1.5; margin-top: 12px; }
+  .verdict-blue { background: var(--blue-light); color: var(--blue); }
+  .verdict-amber { background: var(--amber-light); color: var(--amber); }
+  .verdict-green { background: var(--green-light); color: var(--green); }
+  .verdict-red { background: var(--red-light); color: var(--red); }
+
+  /* Donut center */
+  .chart-wrap { position: relative; }
+  .chart-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+  .chart-center .cv { font-size: 1.6rem; font-weight: 800; }
+  .chart-center .cl { font-size: 0.7rem; color: var(--muted); }
+
+  canvas { max-width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">OEE Analyse · DW08</div>
+    <div class="sub">Metsä Board NL — Winschoten</div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Upload section -->
+  <div class="upload-section">
+    <!-- Events -->
+    <div class="drop-zone" id="zone-events" onclick="document.getElementById('file-events').click()">
+      <div class="icon">📋</div>
+      <div class="label">Default_template.xlsx</div>
+      <div class="hint">PROMs events rapport — sleuren of klikken</div>
+      <div class="filename" id="name-events"></div>
+      <input type="file" id="file-events" accept=".xlsx,.xls">
+    </div>
+    <!-- Speed CSV -->
+    <div class="drop-zone" id="zone-csv" onclick="document.getElementById('file-csv').click()">
+      <div class="icon">📊</div>
+      <div class="label">values.csv</div>
+      <div class="hint">Snelheid & alarmdata per 15 sec — sleuren of klikken</div>
+      <div class="filename" id="name-csv"></div>
+      <input type="file" id="file-csv" accept=".csv">
+    </div>
+    <!-- LoadList -->
+    <div class="drop-zone" id="zone-orders" onclick="document.getElementById('file-orders').click()">
+      <div class="icon">📦</div>
+      <div class="label">LoadList .xls</div>
+      <div class="hint">Orders en tonnen — sleuren of klikken</div>
+      <div class="filename" id="name-orders"></div>
+      <input type="file" id="file-orders" accept=".xls,.xlsx">
+    </div>
+  </div>
+
+  <button class="analyse-btn" id="analyse-btn" disabled>Analyseer shift met AI</button>
+
+  <div class="error-box" id="error-box"></div>
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    <p>AI analyseert shift data voor DW08…</p>
+    <p style="color:var(--muted);font-size:0.82rem;margin-top:8px;">Dit duurt ca. 15–30 seconden</p>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="overzicht">Overzicht</button>
+      <button class="tab-btn" data-tab="potentieel">Potentieel</button>
+      <button class="tab-btn" data-tab="oee">OEE</button>
+      <button class="tab-btn" data-tab="machine">Machine</button>
+      <button class="tab-btn" data-tab="operator">Operator</button>
+      <button class="tab-btn" data-tab="kwaliteit">Kwaliteit</button>
+    </div>
+
+    <!-- TAB: Overzicht -->
+    <div class="tab-pane active" id="tab-overzicht">
+      <div class="kpi-row" id="kpi-overzicht"></div>
+      <div id="win-card-wrap"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Tijdverdeling shift</div>
+          <div class="chart-wrap" style="max-width:280px;margin:0 auto;">
+            <canvas id="donut-chart" height="280"></canvas>
+            <div class="chart-center">
+              <div class="cv" id="donut-center-val">—</div>
+              <div class="cl">OEE</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Verlies per categorie (min)</div>
+          <canvas id="bar-chart" height="220"></canvas>
+        </div>
+      </div>
+      <div class="grid-3" id="score-cards"></div>
+    </div>
+
+    <!-- TAB: Potentieel -->
+    <div class="tab-pane" id="tab-potentieel">
+      <div class="kpi-row" id="kpi-potentieel"></div>
+      <div class="card">
+        <div class="card-title">Scenario vergelijking</div>
+        <div id="scenario-bars"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Verbeterstappen (MT winst)</div>
+        <ol class="step-list" id="pot-stappen"></ol>
+      </div>
+    </div>
+
+    <!-- TAB: OEE -->
+    <div class="tab-pane" id="tab-oee">
+      <div class="kpi-row" id="kpi-oee"></div>
+      <div class="card">
+        <div class="card-title">OEE factoren — huidig vs. doel (65%)</div>
+        <div id="oee-factors"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Orders overzicht</div>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="orders-table">
+            <thead><tr><th>Order</th><th>Product</th><th>GSM</th><th>Breedte</th><th>Net Prod (m)</th><th>Ton/u</th><th>Start</th><th>Eind</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Machine -->
+    <div class="tab-pane" id="tab-machine">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Machine score</div>
+          <div class="score-ring" id="machine-score-ring"></div>
+          <div class="verdict-box verdict-blue" id="machine-verdict"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top oorzaken</div>
+          <ul class="oorzaak-list" id="machine-oorzaken"></ul>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Verbeterpunten</div>
+          <ul class="oorzaak-list" id="machine-verbeter"></ul>
+        </div>
+        <div class="card">
+          <div class="card-title">Alarmcode analyse</div>
+          <div id="machine-alarms" style="font-size:0.85rem;line-height:1.7;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Operator -->
+    <div class="tab-pane" id="tab-operator">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Operator score</div>
+          <div class="score-ring" id="operator-score-ring"></div>
+          <div class="verdict-box verdict-amber" id="operator-verdict"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top oorzaken</div>
+          <ul class="oorzaak-list" id="operator-oorzaken"></ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Verbeterpunten</div>
+        <ul class="oorzaak-list" id="operator-verbeter"></ul>
+      </div>
+    </div>
+
+    <!-- TAB: Kwaliteit -->
+    <div class="tab-pane" id="tab-kwaliteit">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Kwaliteit score</div>
+          <div class="score-ring" id="kwaliteit-score-ring"></div>
+          <div class="verdict-box verdict-red" id="kwaliteit-verdict"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top oorzaken</div>
+          <ul class="oorzaak-list" id="kwaliteit-oorzaken"></ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Verbeterpunten</div>
+        <ul class="oorzaak-list" id="kwaliteit-verbeter"></ul>
+      </div>
+      <div class="card">
+        <div class="card-title">5-stappen kwaliteitsprotocol</div>
+        <ol class="step-list" id="kwal-protocol"></ol>
+      </div>
+    </div>
+  </div><!-- /dashboard -->
+</div><!-- /container -->
+
+<script>
+// ========== STATE ==========
+const state = {
+  eventsLoaded: false,
+  csvLoaded: false,
+  ordersLoaded: false,
+  evData: null,
+  csvData: null,
+  ordersData: null,
+  chartDonut: null,
+  chartBar: null
+};
+
+// ========== DROP ZONES ==========
+function setupDropZone(zoneId, inputId, nameId, type) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file, type, nameId, zoneId);
+  });
+  input.addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0], type, nameId, zoneId);
+  });
+}
+
+setupDropZone('zone-events', 'file-events', 'name-events', 'events');
+setupDropZone('zone-csv', 'file-csv', 'name-csv', 'csv');
+setupDropZone('zone-orders', 'file-orders', 'name-orders', 'orders');
+
+function handleFile(file, type, nameId, zoneId) {
+  document.getElementById(nameId).textContent = file.name;
+  document.getElementById(zoneId).classList.add('loaded');
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    if (type === 'csv') {
+      state.csvData = parseSpeedCSV(e.target.result);
+      state.csvLoaded = true;
+    } else {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      if (type === 'events') {
+        state.evData = parseEvents(wb);
+        state.eventsLoaded = true;
+      } else {
+        state.ordersData = parseOrders(wb);
+        state.ordersLoaded = true;
+      }
+    }
+    checkReady();
+  };
+  if (type === 'csv') reader.readAsText(file, 'utf-8');
+  else reader.readAsArrayBuffer(file);
+}
+
+function checkReady() {
+  const ready = state.eventsLoaded && state.csvLoaded && state.ordersLoaded;
+  document.getElementById('analyse-btn').disabled = !ready;
+}
+
+// ========== PARSE EVENTS ==========
+function excelTimeToSec(v) {
+  if (typeof v === 'number') return Math.round(v * 86400);
+  return 0;
+}
+function excelTimeToHHMM(v) {
+  if (typeof v === 'number') {
+    const totalMin = Math.round(v * 1440);
+    const h = Math.floor(totalMin / 60) % 24;
+    const m = totalMin % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+  return String(v || '');
+}
+
+function parseEvents(wb) {
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+  // Find header row
+  let headerIdx = -1;
+  let headers = [];
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].some(c => String(c).toLowerCase().includes('duration') || String(c).toLowerCase().includes('start'))) {
+      headerIdx = i;
+      headers = rows[i].map(c => String(c).trim());
+      break;
+    }
+  }
+  if (headerIdx < 0) { headerIdx = 0; headers = rows[0].map(c => String(c).trim()); }
+
+  const col = name => headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+  const iId = col('ID'); const iDate = col('Date');
+  const iStart = col('Start'); const iEnd = col('End');
+  const iDur = col('Duration'); const iComment = col('Comment');
+  // Level columns: Level 2..10
+  const levelCols = [];
+  headers.forEach((h, i) => { if (/level\s*[2-9]|level\s*10/i.test(h)) levelCols.push(i); });
+
+  const evList = [];
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r[iId] && !r[iStart]) continue;
+    const durSec = excelTimeToSec(r[iDur]);
+    if (durSec <= 0) continue;
+    const cat = levelCols.map(ci => String(r[ci] || '').trim()).filter(Boolean).join(' › ');
+    evList.push({
+      nr: r[iId] || i,
+      date: r[iDate] || '',
+      t: excelTimeToHHMM(r[iStart]),
+      end: excelTimeToHHMM(r[iEnd]),
+      dur_min: Math.round(durSec / 60 * 10) / 10,
+      cat,
+      comment: String(r[iComment] || '').trim()
+    });
+  }
+  return evList;
+}
+
+// ========== PARSE SPEED CSV ==========
+function parseSpeedCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return null;
+
+  const sep = ';';
+  const header = lines[0].split(sep).map(h => h.trim().replace(/"/g, ''));
+  const colIdx = name => header.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+
+  const iTime = colIdx('time');
+  const iSpeed = colIdx('linespeed') >= 0 ? colIdx('linespeed') : colIdx('speed');
+  const iMaxSpeed = colIdx('maxspeed') >= 0 ? colIdx('maxspeed') : colIdx('max');
+  const iReject = colIdx('rejectgate');
+  const iFmt = colIdx('formatchg') >= 0 ? colIdx('formatchg') : colIdx('format');
+  const iAlarm = colIdx('alarmgeneral') >= 0 ? colIdx('alarmgeneral') : colIdx('alarm');
+  const iLen = colIdx('lenght') >= 0 ? colIdx('lenght') : colIdx('length');
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(sep).map(v => v.trim().replace(/"/g, '').replace(',', '.'));
+    if (parts.length < 3) continue;
+    rows.push({
+      time: parts[iTime] || '',
+      speed: parseFloat(parts[iSpeed]) || 0,
+      maxSpeed: parseFloat(parts[iMaxSpeed]) || 0,
+      reject: parseFloat(parts[iReject]) || 0,
+      fmt: parseFloat(parts[iFmt]) || 0,
+      alarm: parseFloat(parts[iAlarm]) || 0,
+      len: parseFloat(parts[iLen]) || 0
+    });
+  }
+  if (!rows.length) return null;
+
+  const intervalMin = 0.25; // 15 sec
+  let runningMin = 0, standstillMin = 0;
+  let speedSum = 0, speedCount = 0;
+  let maxSpeedSetting = 0;
+  let rejectMin = 0;
+  let fmtMin = 0;
+  const alarmSet = new Set();
+
+  rows.forEach(r => {
+    if (r.speed > 1) { runningMin += intervalMin; speedSum += r.speed; speedCount++; }
+    else { standstillMin += intervalMin; }
+    if (r.maxSpeed > maxSpeedSetting) maxSpeedSetting = r.maxSpeed;
+    if (r.reject > 0) rejectMin += intervalMin;
+    if (r.fmt > 0) fmtMin += intervalMin;
+    if (r.alarm > 0) alarmSet.add(r.alarm);
+  });
+
+  const startLen = rows.find(r => r.len > 0)?.len || 0;
+  const endLen = [...rows].reverse().find(r => r.len > 0)?.len || 0;
+  const cutMeters = Math.max(0, endLen - startLen);
+  const avgRunningSpeed = speedCount > 0 ? Math.round(speedSum / speedCount * 10) / 10 : 0;
+  const totalMin = runningMin + standstillMin;
+  const rejectPct = totalMin > 0 ? Math.round(rejectMin / totalMin * 1000) / 10 : 0;
+
+  return {
+    runningMin: Math.round(runningMin), standstillMin: Math.round(standstillMin),
+    avgRunningSpeed, maxSpeedSetting: Math.round(maxSpeedSetting),
+    rejectMin: Math.round(rejectMin), rejectPct,
+    alarmCodes: [...alarmSet].sort((a, b) => a - b),
+    cutMeters: Math.round(cutMeters),
+    fmtMin: Math.round(fmtMin),
+    totalMin: Math.round(totalMin)
+  };
+}
+
+// ========== PARSE ORDERS ==========
+function parseOrders(wb) {
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+  // Find header row
+  let headerIdx = -1;
+  let headers = [];
+  for (let i = 0; i < rows.length; i++) {
+    const lower = rows[i].map(c => String(c).toLowerCase());
+    if (lower.some(c => c.includes('order'))) {
+      headerIdx = i; headers = rows[i].map(c => String(c).trim()); break;
+    }
+  }
+  if (headerIdx < 0) return null;
+
+  const col = (name, alt) => {
+    let idx = headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+    if (idx < 0 && alt) idx = headers.findIndex(h => h.toLowerCase().includes(alt.toLowerCase()));
+    return idx;
+  };
+
+  const iOrder = col('order'); const iProduct = col('product');
+  const iGsm = col('gsm'); const iSize = col('size');
+  const iNetProd = col('net prod', 'netprod'); const iNetUsed = col('net used', 'netused');
+  const iTonH = col('ton/h', 'tonh'); const iStart = col('start');
+  const iEnd = col('end'); const iTime = col('time');
+  const iMach = col('mach');
+
+  const orders = [];
+  let avGsm = null, avWidth = null;
+  let totalNetProd = 0, totalNetUsed = 0;
+
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const orderVal = String(r[iOrder] || '').trim();
+
+    // Summary rows
+    const rowStr = r.join(' ').toLowerCase();
+    if (rowStr.includes('av.gsm') || rowStr.includes('avg gsm')) {
+      avGsm = parseFloat(String(r[iGsm] || r[iOrder + 1] || '').replace(',', '.')) || null;
+      continue;
+    }
+    if (rowStr.includes('av.parent') || rowStr.includes('avg parent') || rowStr.includes('parent reel width')) {
+      avWidth = parseFloat(String(r[iSize] || r[iOrder + 1] || '').replace(',', '.')) || null;
+      continue;
+    }
+    if (!orderVal || orderVal.toLowerCase() === 'order') continue;
+    if (orderVal.toLowerCase().includes('total') || orderVal.toLowerCase().includes('sum')) continue;
+
+    const gsm = parseFloat(String(r[iGsm] || '').replace(',', '.')) || 0;
+    const size1 = parseFloat(String(r[iSize] || '').replace(',', '.')) || 0;
+    const netProd = parseFloat(String(r[iNetProd] || '').replace(',', '.')) || 0;
+    const netUsed = parseFloat(String(r[iNetUsed] || '').replace(',', '.')) || 0;
+    const tonH = parseFloat(String(r[iTonH] || '').replace(',', '.')) || 0;
+
+    totalNetProd += netProd;
+    totalNetUsed += netUsed;
+
+    // werkelijk MT: gsm * width_mm/1000 * netProd_m / 1000
+    const widthM = size1 / 1000;
+    const mt = gsm > 0 && widthM > 0 && netProd > 0 ? (gsm * widthM * netProd) / 1e6 : 0;
+
+    orders.push({
+      order: orderVal,
+      product: String(r[iProduct] || '').trim(),
+      gsm, size1, netProd, netUsed, tonH,
+      start: r[iStart] || '', end: r[iEnd] || '',
+      mt: Math.round(mt * 1000) / 1000
+    });
+  }
+
+  const totalMT = orders.reduce((s, o) => s + o.mt, 0);
+
+  // Fallback averages
+  if (!avGsm && orders.length) avGsm = Math.round(orders.reduce((s, o) => s + o.gsm, 0) / orders.length);
+  if (!avWidth && orders.length) avWidth = Math.round(orders.reduce((s, o) => s + o.size1, 0) / orders.length);
+
+  return { orders, totalNetProd: Math.round(totalNetProd), totalNetUsed: Math.round(totalNetUsed), avGsm, avWidth, totalMT: Math.round(totalMT * 100) / 100 };
+}
+
+// ========== OEE BEREKENING (client-side, definitief) ==========
+// APT = 510 - niet_gepland(=0) - gepland_stilstand
+// Beschikbaarheid = (APT - ongeplande_stilstand) / APT
+// Prestatie = werkelijke_snelheid / 350 m/min
+// Kwaliteit = goede_meters / totaal_gesneden_meters
+// OEE = Beschikbaarheid × Prestatie × Kwaliteit
+const SHIFT_MIN = 510;
+const MAX_SPEED_OEE = 350; // referentiesnelheid voor prestatieberekening
+
+function berekenOEE(geplMin, machMin, operMin, avgSpeed, goedeMtr, cutMtr) {
+  const apt = Math.max(0, SHIFT_MIN - geplMin);
+  const ongepland = machMin + operMin;
+  const bFrac = apt > 0 ? Math.max(0, (apt - ongepland) / apt) : 0;
+  const pFrac = Math.min(1, avgSpeed / MAX_SPEED_OEE);
+  const kFrac = cutMtr > 0 ? Math.min(1, goedeMtr / cutMtr) : 1;
+  const oeeFrac = bFrac * pFrac * kFrac;
+  return {
+    apt: Math.round(apt),
+    beschikbaarheid: Math.round(bFrac * 1000) / 10,
+    prestatie: Math.round(pFrac * 1000) / 10,
+    kwaliteit: Math.round(kFrac * 1000) / 10,
+    oee: Math.round(oeeFrac * 1000) / 10
+  };
+}
+
+// ========== BUILD PROMPT ==========
+function buildPrompt() {
+  const ev = state.evData;
+  const csv = state.csvData;
+  const ord = state.ordersData;
+  const maxSpeed = csv.maxSpeedSetting || 280;
+  const avgSpeed = csv.avgRunningSpeed;
+  // APT schatting voor potentieel (definitief na AI)
+  const aptEst = SHIFT_MIN; // gepland_stilstand nog niet bekend
+  const pot1MT = Math.round((aptEst * avgSpeed * (ord.avGsm || 80) * ((ord.avWidth || 2500) / 1000) / 1e6) * 100) / 100;
+  const pot2MT = Math.round((aptEst * maxSpeed * (ord.avGsm || 80) * ((ord.avWidth || 2500) / 1000) / 1e6) * 100) / 100;
+  const speedPct = Math.round(avgSpeed / MAX_SPEED_OEE * 100);
+
+  const evText = ev.slice(0, 60).map((e, i) =>
+    `${i + 1}. [${e.t}] ${e.dur_min}min — ${e.cat}${e.comment ? ' — ' + e.comment : ''}`
+  ).join('\n');
+
+  const ordText = ord.orders.map(o =>
+    `Order ${o.order}: ${o.product}, ${o.gsm}gsm, ${o.size1}mm, ${o.netProd}m netto, ${o.tonH}ton/u`
+  ).join('\n');
+
+  return `Analyseer shift DW08 (Metsä NL Winschoten). Max snelheid: ${maxSpeed} m/min.
+
+=== OEE FORMULES (gebruik deze definities) ===
+- Shift = 510 min
+- APT = 510 - gepland_stilstand (niet_gepland = 0)
+- Beschikbaarheid = (APT - ongeplande_stilstand) / APT
+- Prestatie = werkelijke_snelheid / 350 m/min (referentie)
+- Kwaliteit = goede_meters / totaal_gesneden_meters
+- OEE = Beschikbaarheid × Prestatie × Kwaliteit
+
+=== EVENTS (${ev.length} stuks) ===
+${evText}
+
+=== MACHINEDATA ===
+- Lopend: ${csv.runningMin} min, stilstand: ${csv.standstillMin} min
+- Gem. snelheid: ${avgSpeed} m/min (${speedPct}% van referentie 350 m/min)
+- Rejectgate open: ${csv.rejectMin} min (${csv.rejectPct}%)
+- Alarmcodes: ${csv.alarmCodes.join(', ') || 'geen'}
+- Gesneden meters: ${csv.cutMeters} m
+- Formaatwissels actief: ${csv.fmtMin} min
+
+=== ORDERS ===
+${ordText}
+- Totaal geproduceerd: ${ord.totalMT} MT
+- Netto productie: ${ord.totalNetProd} m
+- Gem. GSM: ${ord.avGsm}, Gem. breedte: ${ord.avWidth}mm
+
+=== POTENTIEEL ===
+- Shift: ${SHIFT_MIN} min, referentiesnelheid: ${MAX_SPEED_OEE} m/min
+- Bij huidige snelheid + 0 downtime: ${pot1MT} MT
+- Bij max snelheid + 0 downtime: ${pot2MT} MT
+
+Categoriseer events: machine/operator/kwaliteit/gepland
+
+Retourneer exact:
+{
+  "machine": { "events": [], "total_min": 0, "top_oorzaken": [], "score": 0, "verdict": "", "verbeteringen": [], "alarm_analyse": "" },
+  "operator": { "events": [], "total_min": 0, "top_oorzaken": [], "score": 0, "verdict": "", "verbeteringen": [] },
+  "kwaliteit": { "events": [], "total_min": 0, "top_oorzaken": [], "score": 0, "verdict": "", "verbeteringen": [], "protocol": [] },
+  "gepland": { "total_min": 0 },
+  "potentieel": { "werkelijk_mt": 0, "werkelijk_m": 0, "na_rejectgate_fix_mt": 0, "na_rts_fix_mt": 0, "na_formaat_fix_mt": 0, "bij_280mmin_mt": 0, "bij_max_mt": 0, "stappen": [] },
+  "oee": { "verdict": "" },
+  "meta": { "machine": "DW08", "locatie": "Metsä NL Winschoten", "shift_start": "", "shift_end": "", "totaal_events": 0, "ongepland_min": 0, "grootste_veroorzaker": "" }
+}`;
+}
+
+// ========== ANALYSE BUTTON ==========
+document.getElementById('analyse-btn').addEventListener('click', async () => {
+  setError('');
+  document.getElementById('loader').classList.add('active');
+  document.getElementById('dashboard').classList.remove('active');
+  document.getElementById('analyse-btn').disabled = true;
+
+  try {
+    const prompt = buildPrompt();
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Parse JSON from response
+    let raw = data.text.trim();
+    // Strip possible markdown fences
+    raw = raw.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '');
+    const result = JSON.parse(raw);
+    renderDashboard(result);
+  } catch (err) {
+    setError('Fout: ' + err.message);
+  } finally {
+    document.getElementById('loader').classList.remove('active');
+    document.getElementById('analyse-btn').disabled = false;
+  }
+});
+
+function setError(msg) {
+  const box = document.getElementById('error-box');
+  box.textContent = msg;
+  box.classList.toggle('active', !!msg);
+}
+
+// ========== TABS ==========
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ========== RENDER ==========
+function kpiCard(label, value, sub, color) {
+  return `<div class="kpi-card kpi-${color}">
+    <div class="kpi-label">${label}</div>
+    <div class="kpi-value">${value}</div>
+    ${sub ? `<div class="kpi-sub">${sub}</div>` : ''}
+  </div>`;
+}
+
+function scoreCircle(score, label) {
+  const cls = score >= 7 ? 'score-high' : score >= 5 ? 'score-mid' : 'score-low';
+  return `<div class="score-ring">
+    <div class="score-circle ${cls}">${score}/10</div>
+    <div style="font-weight:600;font-size:0.85rem;">${label}</div>
+  </div>`;
+}
+
+function listItems(arr, id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = (arr || []).map(t => `<li>${t}</li>`).join('');
+}
+
+function renderDashboard(r) {
+  const csv = state.csvData;
+  const ord = state.ordersData;
+
+  // === OVERZICHT ===
+  const oeeAI = r.oee || {};
+  const pot = r.potentieel || {};
+  const meta = r.meta || {};
+  const mach = r.machine || {};
+  const oper = r.operator || {};
+  const kwal = r.kwaliteit || {};
+  const gep = r.gepland || {};
+
+  // ---- OEE berekening (definitief, client-side) ----
+  const goedeMtr = ord.totalNetProd > 0 ? ord.totalNetProd : csv.cutMeters;
+  const oee = berekenOEE(
+    gep.total_min || 0,
+    mach.total_min || 0,
+    oper.total_min || 0,
+    csv.avgRunningSpeed,
+    goedeMtr,
+    csv.cutMeters
+  );
+
+  document.getElementById('kpi-overzicht').innerHTML =
+    kpiCard('Geproduceerd', (pot.werkelijk_mt || ord.totalMT) + ' MT', 'netto output shift', 'green') +
+    kpiCard('OEE huidig', oee.oee + '%', 'doel: 65%', oee.oee >= 65 ? 'green' : 'red') +
+    kpiCard('Gem. snelheid', csv.avgRunningSpeed + ' m/min', MAX_SPEED_OEE + ' m/min referentie', 'blue') +
+    kpiCard('Rejectgate', csv.rejectPct + '%', csv.rejectMin + ' min open', csv.rejectPct < 5 ? 'green' : 'amber');
+
+  // Win card
+  const gain1 = pot.na_rts_fix_mt ? (pot.na_rts_fix_mt - (pot.werkelijk_mt || ord.totalMT)).toFixed(2) : '?';
+  const gainMax = pot.bij_max_mt ? (pot.bij_max_mt - (pot.werkelijk_mt || ord.totalMT)).toFixed(2) : '?';
+  document.getElementById('win-card-wrap').innerHTML = `
+    <div class="win-card">
+      <div class="win-title">Productiepotentieel</div>
+      <div class="win-row"><span class="win-label">Realistisch (stilstand → 0)</span><span class="win-value">+${gain1} MT</span></div>
+      <div class="win-row"><span class="win-label">Maximum (${csv.maxSpeedSetting} m/min, 0 downtime)</span><span class="win-value">+${gainMax} MT</span></div>
+    </div>`;
+
+  // Charts
+  const totalMin = csv.totalMin || 480;
+  const unplanned = meta.ongepland_min || (mach.total_min + oper.total_min + kwal.total_min) || 0;
+  const planned = gep.total_min || 0;
+  const running = Math.max(0, totalMin - unplanned - planned);
+
+  document.getElementById('donut-center-val').textContent = oee.oee + '%';
+
+  if (state.chartDonut) state.chartDonut.destroy();
+  const ctxD = document.getElementById('donut-chart').getContext('2d');
+  state.chartDonut = new Chart(ctxD, {
+    type: 'doughnut',
+    data: {
+      labels: ['Lopend', 'Machine', 'Operator', 'Kwaliteit', 'Gepland'],
+      datasets: [{ data: [running, mach.total_min || 0, oper.total_min || 0, kwal.total_min || 0, planned],
+        backgroundColor: ['#22c55e', '#2563EB', '#B45309', '#DC2626', '#94a3b8'],
+        borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: { cutout: '68%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }
+  });
+
+  if (state.chartBar) state.chartBar.destroy();
+  const ctxB = document.getElementById('bar-chart').getContext('2d');
+  state.chartBar = new Chart(ctxB, {
+    type: 'bar',
+    data: {
+      labels: ['Machine', 'Operator', 'Kwaliteit', 'Gepland'],
+      datasets: [{ label: 'Minuten verlies',
+        data: [mach.total_min || 0, oper.total_min || 0, kwal.total_min || 0, planned],
+        backgroundColor: ['#2563EB', '#B45309', '#DC2626', '#94a3b8'],
+        borderRadius: 6 }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  // Score cards
+  document.getElementById('score-cards').innerHTML =
+    `<div class="card">${scoreCircle(mach.score || 0, 'Machine')}</div>` +
+    `<div class="card">${scoreCircle(oper.score || 0, 'Operator')}</div>` +
+    `<div class="card">${scoreCircle(kwal.score || 0, 'Kwaliteit')}</div>`;
+
+  // === POTENTIEEL ===
+  const wMT = pot.werkelijk_mt || ord.totalMT;
+  const maxMT = pot.bij_max_mt || 0;
+  document.getElementById('kpi-potentieel').innerHTML =
+    kpiCard('Werkelijk', wMT + ' MT', 'huidige shift', 'blue') +
+    kpiCard('Na rejectgate fix', (pot.na_rejectgate_fix_mt || 0) + ' MT', 'realistisch kort', 'amber') +
+    kpiCard('Na RTS fix', (pot.na_rts_fix_mt || 0) + ' MT', 'realistisch middellang', 'amber') +
+    kpiCard('Bij max snelheid', maxMT + ' MT', csv.maxSpeedSetting + ' m/min', 'green');
+
+  const scenarios = [
+    { label: 'Werkelijk', mt: wMT, color: '#2563EB' },
+    { label: 'Na rejectgate fix', mt: pot.na_rejectgate_fix_mt || wMT, color: '#B45309' },
+    { label: 'Na RTS fix', mt: pot.na_rts_fix_mt || wMT, color: '#f59e0b' },
+    { label: 'Na formaatwissels fix', mt: pot.na_formaat_fix_mt || wMT, color: '#84cc16' },
+    { label: 'Bij 280 m/min', mt: pot.bij_280mmin_mt || wMT, color: '#10b981' },
+    { label: 'Bij max snelheid', mt: maxMT, color: '#15803D' }
+  ];
+  const maxSc = Math.max(...scenarios.map(s => s.mt)) * 1.05;
+  document.getElementById('scenario-bars').innerHTML = scenarios.map(s => `
+    <div class="scenario-bar">
+      <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:2px;">
+        <span>${s.label}</span><span style="font-weight:700;">${s.mt} MT</span>
+      </div>
+      <div class="scenario-track">
+        <div class="scenario-fill" style="width:${Math.round(s.mt/maxSc*100)}%;background:${s.color};">&nbsp;</div>
+      </div>
+    </div>`).join('');
+
+  const stap = pot.stappen || [];
+  document.getElementById('pot-stappen').innerHTML = stap.map(s => `<li>${s}</li>`).join('');
+
+  // === OEE TAB ===
+  document.getElementById('kpi-oee').innerHTML =
+    kpiCard('OEE huidig', oee.oee + '%', 'doel 65%', oee.oee >= 65 ? 'green' : 'red') +
+    kpiCard('Beschikbaarheid', oee.beschikbaarheid + '%', `APT ${oee.apt} min`, oee.beschikbaarheid >= 85 ? 'green' : 'amber') +
+    kpiCard('Prestatie', oee.prestatie + '%', `${csv.avgRunningSpeed} / ${MAX_SPEED_OEE} m/min`, oee.prestatie >= 80 ? 'green' : 'amber') +
+    kpiCard('Kwaliteit', oee.kwaliteit + '%', `${goedeMtr} / ${csv.cutMeters} m`, oee.kwaliteit >= 95 ? 'green' : 'red');
+
+  // Formule toelichting
+  const oeeFormulaHtml = `
+    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:16px;padding:10px;background:var(--bg);border-radius:8px;line-height:1.8;">
+      APT = 510 − ${gep.total_min || 0} (gepland) = <strong>${oee.apt} min</strong> &nbsp;|&nbsp;
+      Beschikbaarheid = (${oee.apt} − ${(mach.total_min || 0) + (oper.total_min || 0)}) / ${oee.apt} = <strong>${oee.beschikbaarheid}%</strong> &nbsp;|&nbsp;
+      Prestatie = ${csv.avgRunningSpeed} / 350 = <strong>${oee.prestatie}%</strong> &nbsp;|&nbsp;
+      Kwaliteit = ${goedeMtr} / ${csv.cutMeters} = <strong>${oee.kwaliteit}%</strong>
+    </div>`;
+
+  const factors = [
+    { label: 'OEE totaal', val: oee.oee, goal: 65 },
+    { label: 'Beschikbaarheid', val: oee.beschikbaarheid, goal: 85 },
+    { label: 'Prestatie (snelheid)', val: oee.prestatie, goal: 80 },
+    { label: 'Kwaliteit (goede m)', val: oee.kwaliteit, goal: 95 }
+  ];
+  document.getElementById('oee-factors').innerHTML = oeeFormulaHtml + factors.map(f => `
+    <div class="factor-row">
+      <div class="factor-label">${f.label}</div>
+      <div class="factor-track">
+        <div class="factor-fill goal" style="width:${Math.min(f.goal, 100)}%;"></div>
+        <div class="factor-fill" style="width:${Math.min(f.val, 100)}%;"></div>
+      </div>
+      <div class="factor-val">${f.val}%</div>
+    </div>`).join('');
+
+  if (oeeAI.verdict) {
+    const verdictEl = document.createElement('div');
+    verdictEl.className = 'verdict-box verdict-blue';
+    verdictEl.style.marginTop = '16px';
+    verdictEl.textContent = oeeAI.verdict;
+    document.getElementById('oee-factors').appendChild(verdictEl);
+  }
+
+  // Orders table
+  const tbody = document.querySelector('#orders-table tbody');
+  tbody.innerHTML = (ord.orders || []).map(o => {
+    const tonCls = o.tonH > 4 ? 'ton-high' : o.tonH < 2 ? 'ton-low' : '';
+    return `<tr>
+      <td>${o.order}</td>
+      <td>${o.product}</td>
+      <td>${o.gsm}</td>
+      <td>${o.size1}</td>
+      <td>${o.netProd}</td>
+      <td class="${tonCls}">${o.tonH}</td>
+      <td>${o.start}</td>
+      <td>${o.end}</td>
+    </tr>`;
+  }).join('');
+
+  // === MACHINE TAB ===
+  document.getElementById('machine-score-ring').innerHTML = scoreCircle(mach.score || 0, 'Machine score');
+  document.getElementById('machine-verdict').textContent = mach.verdict || '';
+  listItems(mach.top_oorzaken, 'machine-oorzaken');
+  listItems(mach.verbeteringen, 'machine-verbeter');
+  document.getElementById('machine-alarms').innerHTML = (mach.alarm_analyse || 'Geen alarmdata beschikbaar.').replace(/\n/g, '<br>');
+
+  // === OPERATOR TAB ===
+  document.getElementById('operator-score-ring').innerHTML = scoreCircle(oper.score || 0, 'Operator score');
+  document.getElementById('operator-verdict').textContent = oper.verdict || '';
+  listItems(oper.top_oorzaken, 'operator-oorzaken');
+  listItems(oper.verbeteringen, 'operator-verbeter');
+
+  // === KWALITEIT TAB ===
+  document.getElementById('kwaliteit-score-ring').innerHTML = scoreCircle(kwal.score || 0, 'Kwaliteit score');
+  document.getElementById('kwaliteit-verdict').textContent = kwal.verdict || '';
+  listItems(kwal.top_oorzaken, 'kwaliteit-oorzaken');
+  listItems(kwal.verbeteringen, 'kwaliteit-verbeter');
+  const protocol = kwal.protocol || [];
+  document.getElementById('kwal-protocol').innerHTML = protocol.map(s => `<li>${s}</li>`).join('');
+
+  document.getElementById('dashboard').classList.add('active');
+  document.getElementById('dashboard').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

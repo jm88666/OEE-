@@ -1,0 +1,14 @@
+{
+  "name": "oee-analyse",
+  "version": "1.0.0",
+  "description": "OEE Analyse voor DW08 - Metsä NL Winschoten",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "@anthropic-ai/sdk": "^0.20.0",
+    "dotenv": "^16.0.0"
+  }
+}
