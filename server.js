@@ -15,32 +15,22 @@ app.post('/api/analyze', async (req, res) => {
   if (!apiKey || apiKey === 'plak-hier-je-sleutel') {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld in .env bestand.' });
   }
-
   const { prompt } = req.body;
-  if (!prompt) {
-    return res.status(400).json({ error: 'Geen prompt meegegeven.' });
-  }
+  if (!prompt) return res.status(400).json({ error: 'Geen prompt meegegeven.' });
 
   try {
     const client = new Anthropic({ apiKey });
-
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5-20251001',
-      max_tokens: 6000,
-      system: 'Je bent een expert productie-analist voor industriële snijmachines. Retourneer UITSLUITEND valide JSON zonder markdown.',
-      messages: [
-        { role: 'user', content: prompt }
-      ]
+      max_tokens: 8000,
+      system: 'Je bent expert productie-analist voor industriële snijmachines bij Metsä NL Winschoten. Retourneer UITSLUITEND valide JSON zonder markdown.',
+      messages: [{ role: 'user', content: prompt }]
     });
-
-    const text = message.content[0].text;
-    res.json({ text });
+    res.json({ text: message.content[0].text });
   } catch (err) {
     console.error('Anthropic API fout:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`OEE Analyse server draait op http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`OEE Analyse v2 draait op http://localhost:${PORT}`));
