@@ -21,7 +21,7 @@ app.post('/api/analyze', async (req, res) => {
   try {
     const client = new Anthropic({ apiKey });
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5-20251001',
+      model: 'claude-sonnet-4-5',
       max_tokens: 8000,
       system: 'Je bent expert productie-analist voor industriële snijmachines bij Metsä NL Winschoten. Retourneer UITSLUITEND valide JSON zonder markdown.',
       messages: [{ role: 'user', content: prompt }]
