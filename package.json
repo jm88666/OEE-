@@ -1,6 +1,6 @@
 {
   "name": "oee-analyse",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "OEE Analyse voor DW08 - Metsä NL Winschoten",
   "main": "server.js",
   "scripts": {
