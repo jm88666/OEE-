@@ -270,7 +270,7 @@
 
 <script>
 // ══ STATE ══
-const STATE={files:{oee:null,sluis:null,sense:null,events:null,loadlist:null},parsed:{oee:null,sluis:null,sense:null,events:null,loadlist:null},calc:null,pot:null,ai:null,orderPot:null};
+const STATE={files:{oee:null,sluis:null,sense:null,events:null,loadlist:null},parsed:{oee:null,sluis:null,sense:null,events:null,loadlist:null},calc:null,pot:null,ai:null,orderPot:null,opstartAnalyse:null};
 const CHARTS={};
 const SHIFT_MIN=510;
 const C={machine:'#2563EB',operator:'#B45309',kwal:'#DC2626',sluis:'#7C3AED',win:'#15803D',warn:'#D97706',neutral:'#9CA3AF'};
@@ -517,6 +517,7 @@ async function parseLoadList(file){
     const iStart=findCol(headers,'start');
     const iEnd=findCol(headers,'end','eind');
     const iEst=findCol(headers,'est run','estrun','est. run','est.run');
+    const iOps=findCol(headers,'opstart','startup','aanloop','oploop');
     for(let ri=hdr+1;ri<rows.length;ri++){
       const row=rows[ri];const cells=row.map(cs);
       const rowStr=cells.join('|').toLowerCase();
@@ -543,7 +544,8 @@ async function parseLoadList(file){
       const maxSpd=vellengrootte>0?maxSpeedForOrder(vellengrootte):0;
       const actualSpd=timeMin>0?npM/timeMin:0;
       const speedUtil=maxSpd>0&&actualSpd>0?actualSpd/maxSpd*100:0;
-      res.orders.push({order:ordVal,product:iPrd>=0?cells[iPrd]:'',gsm,widthMm,widthMm2,vellengrootte,netProdM:npM,mt,tonH,timeMin,estRun,maxSpd,actualSpd,speedUtil,startDateStr,hasEnd});
+      const opstart_min=iOps>=0?pNum(row[iOps]):0;
+      res.orders.push({order:ordVal,product:iPrd>=0?cells[iPrd]:'',gsm,widthMm,widthMm2,vellengrootte,netProdM:npM,mt,tonH,timeMin,estRun,maxSpd,actualSpd,speedUtil,startDateStr,hasEnd,opstart_min});
     }
     if(res.orders.length)break;
   }
@@ -619,6 +621,30 @@ function calcOrderPotentieel(parsed,calc){
     extraM:extraOrders.reduce((s,o)=>s+(o.netProdM||0),0)};
 }
 
+function calcOpstartAnalyse(orderPot, parsed){
+  const ll=parsed?.loadlist||{};
+  const realTPM=ll.totalNetProdM>0?ll.totalMT/ll.totalNetProdM:0;
+  const orders=(orderPot?.gedraaid||[]).filter(o=>o.opstart_min>0);
+  if(!orders.length)return null;
+  const norm=2;
+  const gem=orders.reduce((s,o)=>s+o.opstart_min,0)/orders.length;
+  const trage=orders.filter(o=>o.opstart_min>5);
+  const verliesM=trage.reduce((s,o)=>s+Math.max(0,o.opstart_min-norm)*(o.maxSpd||0),0);
+  const verliesMT=verliesM*realTPM;
+  const verliesMin=trage.reduce((s,o)=>s+Math.max(0,o.opstart_min-norm),0);
+  let verbeterpunt=null;
+  if(trage.length>=2){
+    verbeterpunt={
+      titel:'Opstart procedure versnellen',
+      omschrijving:`${trage.length} van de ${orders.length} orders hadden een opstart > 5 min. Gemiddeld ${fmt(gem,1)} min vs. norm van 2 min. Controleer of de operator wacht op bevestiging die niet nodig is, of dat de bijbaan procedure kan worden verkort.`,
+      prioriteit:trage.length>3?'hoog':'middel',
+      winst_min:Math.round(verliesMin),
+      winst_mt:Math.round(verliesMT*100)/100,
+    };
+  }
+  return{orders,gem,trage,verliesM:Math.round(verliesM),verliesMT:Math.round(verliesMT*100)/100,verliesMin:Math.round(verliesMin*10)/10,realTPM,verbeterpunt};
+}
+
 // ══ AI ══
 function buildPrompt(parsed,calc){
   const l=[];
@@ -665,7 +691,7 @@ async function startAnalysis(){
     setStep(2,'active');STATE.parsed.sense=await parseSense(STATE.files.sense);setStep(2,'done');
     setStep(3,'active');STATE.parsed.events=await parseEvents(STATE.files.events);setStep(3,'done');
     setStep(4,'active');STATE.parsed.loadlist=await parseLoadList(STATE.files.loadlist);setStep(4,'done');
-    setStep(5,'active');STATE.calc=calcOEE(STATE.parsed);STATE.pot=calcPotential(STATE.parsed,STATE.calc);STATE.orderPot=calcOrderPotentieel(STATE.parsed,STATE.calc);setStep(5,'done');
+    setStep(5,'active');STATE.calc=calcOEE(STATE.parsed);STATE.pot=calcPotential(STATE.parsed,STATE.calc);STATE.orderPot=calcOrderPotentieel(STATE.parsed,STATE.calc);STATE.opstartAnalyse=calcOpstartAnalyse(STATE.orderPot,STATE.parsed);setStep(5,'done');
     setStep(6,'active');
     try{STATE.ai=await callAI(buildPrompt(STATE.parsed,STATE.calc));}catch(e){console.warn('AI:',e.message);STATE.ai=null;}
     setStep(6,'done');
@@ -686,17 +712,17 @@ function showUpload(){
 
 // ══ DEMO ══
 const _dRan=[
-  {order:'305454',product:'PRIFBBBRN305R',gsm:305,widthMm:749,widthMm2:0,vellengrootte:749,netProdM:1060,mt:0.24,tonH:5.3,timeMin:12,estRun:0,maxSpd:335,actualSpd:225,speedUtil:67.2,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305371',product:'PROFBBBRN290R',gsm:290,widthMm:805,widthMm2:0,vellengrootte:805,netProdM:3060,mt:0.71,tonH:4.7,timeMin:39,estRun:0,maxSpd:350,actualSpd:280,speedUtil:80.0,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305679',product:'PROFBBGO275R',gsm:275,widthMm:1020,widthMm2:0,vellengrootte:1020,netProdM:636,mt:0.18,tonH:2.4,timeMin:16,estRun:0,maxSpd:348,actualSpd:205,speedUtil:58.9,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305612',product:'PROFBBGO225R',gsm:225,widthMm:900,widthMm2:0,vellengrootte:900,netProdM:8760,mt:1.77,tonH:6.7,timeMin:78,estRun:0,maxSpd:350,actualSpd:290,speedUtil:82.9,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305544',product:'PRIFBBBRN255R',gsm:255,widthMm:1000,widthMm2:0,vellengrootte:1000,netProdM:2072,mt:0.53,tonH:4.1,timeMin:30,estRun:0,maxSpd:350,actualSpd:265,speedUtil:75.7,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305516',product:'PRIFBBBRN270R',gsm:270,widthMm:900,widthMm2:0,vellengrootte:900,netProdM:5056,mt:1.23,tonH:7.1,timeMin:43,estRun:0,maxSpd:350,actualSpd:295,speedUtil:84.3,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305449',product:'PRIFBBBRN280R',gsm:280,widthMm:730,widthMm2:0,vellengrootte:730,netProdM:4008,mt:0.82,tonH:2.7,timeMin:89,estRun:0,maxSpd:329,actualSpd:190,speedUtil:57.8,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305500',product:'PRIFBBBRN170R',gsm:170,widthMm:995,widthMm2:0,vellengrootte:995,netProdM:3200,mt:0.54,tonH:3.1,timeMin:52,estRun:0,maxSpd:350,actualSpd:195,speedUtil:55.7,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305380',product:'PROFBBBRN310R',gsm:310,widthMm:820,widthMm2:0,vellengrootte:820,netProdM:2140,mt:0.54,tonH:4.8,timeMin:28,estRun:0,maxSpd:350,actualSpd:270,speedUtil:77.1,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305391',product:'PRIFBBBRN245R',gsm:245,widthMm:780,widthMm2:0,vellengrootte:780,netProdM:1890,mt:0.36,tonH:3.6,timeMin:31,estRun:0,maxSpd:344,actualSpd:245,speedUtil:71.2,startDateStr:'08/04/26',hasEnd:true},
-  {order:'305402',product:'PROFBBGO260R',gsm:260,widthMm:940,widthMm2:0,vellengrootte:940,netProdM:4850,mt:1.18,tonH:5.2,timeMin:55,estRun:0,maxSpd:350,actualSpd:260,speedUtil:74.3,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305454',product:'PRIFBBBRN305R',gsm:305,widthMm:749,widthMm2:0,vellengrootte:749,netProdM:1060,mt:0.24,tonH:5.3,timeMin:12,estRun:0,maxSpd:335,actualSpd:225,speedUtil:67.2,startDateStr:'08/04/26',hasEnd:true,opstart_min:1.5},
+  {order:'305371',product:'PROFBBBRN290R',gsm:290,widthMm:805,widthMm2:0,vellengrootte:805,netProdM:3060,mt:0.71,tonH:4.7,timeMin:39,estRun:0,maxSpd:350,actualSpd:280,speedUtil:80.0,startDateStr:'08/04/26',hasEnd:true,opstart_min:4.8},
+  {order:'305679',product:'PROFBBGO275R',gsm:275,widthMm:1020,widthMm2:0,vellengrootte:1020,netProdM:636,mt:0.18,tonH:2.4,timeMin:16,estRun:0,maxSpd:348,actualSpd:205,speedUtil:58.9,startDateStr:'08/04/26',hasEnd:true,opstart_min:7.2},
+  {order:'305612',product:'PROFBBGO225R',gsm:225,widthMm:900,widthMm2:0,vellengrootte:900,netProdM:8760,mt:1.77,tonH:6.7,timeMin:78,estRun:0,maxSpd:350,actualSpd:290,speedUtil:82.9,startDateStr:'08/04/26',hasEnd:true,opstart_min:1.5},
+  {order:'305544',product:'PRIFBBBRN255R',gsm:255,widthMm:1000,widthMm2:0,vellengrootte:1000,netProdM:2072,mt:0.53,tonH:4.1,timeMin:30,estRun:0,maxSpd:350,actualSpd:265,speedUtil:75.7,startDateStr:'08/04/26',hasEnd:true,opstart_min:7.5},
+  {order:'305516',product:'PRIFBBBRN270R',gsm:270,widthMm:900,widthMm2:0,vellengrootte:900,netProdM:5056,mt:1.23,tonH:7.1,timeMin:43,estRun:0,maxSpd:350,actualSpd:295,speedUtil:84.3,startDateStr:'08/04/26',hasEnd:true,opstart_min:2.1},
+  {order:'305449',product:'PRIFBBBRN280R',gsm:280,widthMm:730,widthMm2:0,vellengrootte:730,netProdM:4008,mt:0.82,tonH:2.7,timeMin:89,estRun:0,maxSpd:329,actualSpd:190,speedUtil:57.8,startDateStr:'08/04/26',hasEnd:true,opstart_min:8.4},
+  {order:'305500',product:'PRIFBBBRN170R',gsm:170,widthMm:995,widthMm2:0,vellengrootte:995,netProdM:3200,mt:0.54,tonH:3.1,timeMin:52,estRun:0,maxSpd:350,actualSpd:195,speedUtil:55.7,startDateStr:'08/04/26',hasEnd:true,opstart_min:11.2},
+  {order:'305380',product:'PROFBBBRN310R',gsm:310,widthMm:820,widthMm2:0,vellengrootte:820,netProdM:2140,mt:0.54,tonH:4.8,timeMin:28,estRun:0,maxSpd:350,actualSpd:270,speedUtil:77.1,startDateStr:'08/04/26',hasEnd:true,opstart_min:2.4},
+  {order:'305391',product:'PRIFBBBRN245R',gsm:245,widthMm:780,widthMm2:0,vellengrootte:780,netProdM:1890,mt:0.36,tonH:3.6,timeMin:31,estRun:0,maxSpd:344,actualSpd:245,speedUtil:71.2,startDateStr:'08/04/26',hasEnd:true,opstart_min:1.8},
+  {order:'305402',product:'PROFBBGO260R',gsm:260,widthMm:940,widthMm2:0,vellengrootte:940,netProdM:4850,mt:1.18,tonH:5.2,timeMin:55,estRun:0,maxSpd:350,actualSpd:260,speedUtil:74.3,startDateStr:'08/04/26',hasEnd:true,opstart_min:6.8},
 ];
 const _dExtra=[
   {order:'305510',product:'PRIFBBBRN285R',gsm:285,widthMm:760,widthMm2:0,vellengrootte:760,netProdM:9231,mt:2.0,tonH:0,timeMin:0,estRun:28,maxSpd:338,actualSpd:0,speedUtil:0,startDateStr:'',hasEnd:false},
@@ -834,6 +860,7 @@ function startDemo(){
   STATE.ai=DEMO_DATA.ai;
   STATE.orderPot=DEMO_DATA.orderPot;
   STATE.parsed=DEMO_DATA.parsed;
+  STATE.opstartAnalyse=calcOpstartAnalyse(STATE.orderPot,STATE.parsed);
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('dashboard').style.display='block';
@@ -875,6 +902,8 @@ function renderTab0(){
   const mScore=ai.machine?.score||0;const oScore=ai.operator?.score||0;const kScore=ai.kwaliteit?.score||0;
   const mMin=ai.machine?.total_min||0;const oMin=ai.operator?.total_min||0;const kMin=ai.kwaliteit?.total_min||0;
   const sluisMin=p.sluis?.totalSluisDowntimeMin||0;
+  const opstartMin=STATE.opstartAnalyse?.verliesMin||0;
+  const oMinTotal=oMin+opstartMin;
   const prodMin=Math.max(0,(c.apt||0)-(c.opDownMin||0));
   document.getElementById('tab-0').innerHTML=`
   <div class="kpi-row">
@@ -894,7 +923,7 @@ function renderTab0(){
     <div class="card" style="border-top:3px solid var(--kwal)"><div class="score-wrap"><div class="score-ring ring-k">${kScore}</div><div class="score-info"><div class="si-lbl">Score /100</div><div class="si-name">Kwaliteit</div></div></div><div style="font-size:.8rem;color:var(--muted)">${ai.kwaliteit?.verdict||'–'}</div></div>
   </div>`;
   mkC('c-donut',{type:'doughnut',data:{labels:['Productie','Ongepland stilstand','Gepland','Niet ingepland'],datasets:[{data:[prodMin,c.opDownMin||0,c.planDownMin||0,c.notSchedMin||0],backgroundColor:[C.win,C.kwal,C.warn,C.neutral],borderWidth:2}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});
-  mkC('c-verlies',{type:'bar',data:{labels:['Machine','Operator','Kwaliteit','Sluis'],datasets:[{label:'Minuten',data:[mMin,oMin,kMin,sluisMin],backgroundColor:[C.machine+'cc',C.operator+'cc',C.kwal+'cc',C.sluis+'cc'],borderColor:[C.machine,C.operator,C.kwal,C.sluis],borderWidth:1,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  mkC('c-verlies',{type:'bar',data:{labels:['Machine','Operator'+( opstartMin>0?' (incl. opstart)':''),'Kwaliteit','Sluis'],datasets:[{label:'Minuten',data:[mMin,oMinTotal,kMin,sluisMin],backgroundColor:[C.machine+'cc',C.operator+'cc',C.kwal+'cc',C.sluis+'cc'],borderColor:[C.machine,C.operator,C.kwal,C.sluis],borderWidth:1,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
 }
 
 // ══ TAB 1: POTENTIEEL ══
@@ -990,14 +1019,42 @@ function renderTab4(){
 // ══ TAB 5: OPERATOR ══
 function renderTab5(){
   const ai=STATE.ai?.operator||{};
+  const oa=STATE.opstartAnalyse;
+  // Merge opstart verbeterpunt into operator verbeteringen
+  const allVerbeteringen=oa?.verbeterpunt?[oa.verbeterpunt,...(ai.verbeteringen||[])]:(ai.verbeteringen||[]);
+  // Opstartprestatie card HTML
+  function opstartCard(){
+    if(!oa||!oa.orders?.length)return'';
+    const {gem,trage,orders,verliesM,verliesMT,verliesMin}=oa;
+    if(gem<=2){
+      return`<div class="card" style="border-top:3px solid var(--win)"><div class="card-title">Opstartprestatie</div><div class="verdict" style="border-color:var(--win);background:var(--bg)">Goede opstartprestatie — gemiddeld <strong>${fmt(gem,1)} min</strong> over ${orders.length} orders (norm: 2 min)</div></div>`;
+    }
+    const trageRows=trage.map(o=>`<tr><td>${o.order}</td><td>${o.product||'–'}</td><td class="c-bad">${fmt(o.opstart_min,1)} min</td><td>${fmt(o.opstart_min-2,1)} min boven norm</td></tr>`).join('');
+    const trageTable=trage.length?`<div class="tbl-wrap" style="margin-top:.7rem"><table><thead><tr><th>Order</th><th>Product</th><th>Opstarttijd</th><th>Overschrijding</th></tr></thead><tbody>${trageRows}</tbody></table></div>`:'';
+    const statsHTML=`<div style="font-size:.83rem;line-height:1.9;margin-top:.5rem">
+      <div>Gem. opstarttijd: <strong class="${gem>5?'c-bad':'c-warn'}">${fmt(gem,1)} min</strong> <small style="color:var(--muted)">(norm: 2 min)</small></div>
+      <div>Orders te traag opgestart (&gt;5 min): <strong>${trage.length} van ${orders.length}</strong></div>
+      <div>Verloren productie: <strong>${fmt(verliesM,0)} m</strong> / <strong>${fmt(verliesMT,2)} MT</strong></div>
+      <div>Totale opstarttijdverlies: <strong>${fmt(verliesMin,1)} min</strong></div>
+    </div>${trageTable}`;
+    if(gem>5){
+      return`<div class="card" style="border-top:3px solid var(--kwal)"><div class="card-title">Opstartprestatie <span class="badge b-h" style="margin-left:.4rem">hoog</span></div>
+        <div style="font-size:.85rem;font-weight:600;color:var(--kwal);margin-bottom:.4rem">Structureel te langzame opstart — gemiddeld ${fmt(gem,1)} min over ${orders.length} orders. Dit kost elke shift ${fmt(verliesMT,2)} MT.</div>
+        ${statsHTML}</div>`;
+    }
+    return`<div class="card" style="border-top:3px solid var(--warn)"><div class="card-title">Opstartprestatie</div>
+      <div class="verdict vo" style="margin-bottom:.6rem">Let op: gemiddelde opstarttijd boven norm</div>
+      ${statsHTML}</div>`;
+  }
   document.getElementById('tab-5').innerHTML=`
   <div class="score-wrap"><div class="score-ring ring-o">${ai.score||0}</div><div class="score-info"><div class="si-lbl">Operator score /100</div><div class="si-name">Operator analyse</div></div></div>
   ${ai.verdict?`<div class="verdict vo">${ai.verdict}</div>`:''}
+  ${opstartCard()}
   <div class="row2">
     <div class="card"><div class="card-title">Top oorzaken</div>${topTbl(ai.top_oorzaken)}</div>
     <div class="card"><div class="card-title">Verdeling (min)</div><canvas id="c-op" style="max-height:220px"></canvas></div>
   </div>
-  ${ai.verbeteringen?.length?`<div class="card"><div class="card-title">Verbeterpunten operator</div>${imprHTML(ai.verbeteringen)}</div>`:''}
+  ${allVerbeteringen.length?`<div class="card"><div class="card-title">Verbeterpunten operator</div>${imprHTML(allVerbeteringen)}</div>`:''}
   ${ai.events?.length?`<div class="card"><div class="card-title">Operator events</div><div class="tbl-wrap"><table><thead><tr><th>Tijd</th><th>Min</th><th>Event</th><th>Oorzaak</th></tr></thead><tbody>${ai.events.map(e=>`<tr><td>${e.t||'–'}</td><td>${e.dur_min||0}</td><td>${e.label||'–'}</td><td>${e.oorzaak||'–'}</td></tr>`).join('')}</tbody></table></div></div>`:''}`;
   topChart('c-op',ai.top_oorzaken,C.operator);
 }
