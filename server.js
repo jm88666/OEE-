@@ -33,4 +33,15 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
+app.get('/api/auth-check', (req, res) => {
+  const { user, pass } = req.query;
+  const validUser = user === 'metsa';
+  const validPass = pass === process.env.LOGIN_PASSWORD;
+  if (validUser && validPass) {
+    res.json({ ok: true });
+  } else {
+    res.json({ ok: false });
+  }
+});
+
 app.listen(PORT, () => console.log(`OEE Analyse v2 draait op http://localhost:${PORT}`));

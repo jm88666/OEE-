@@ -156,6 +156,23 @@
     .c-warn{color:var(--warn);font-weight:700;}
     .c-bad{color:var(--kwal);font-weight:700;}
     @media(max-width:580px){.tab-content{padding:.7rem;}.kpi-val{font-size:1.45rem;}}
+    /* LOGIN */
+    #s-login{max-width:400px;margin:8vh auto;padding:1.5rem;}
+    .login-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:2rem;}
+    .login-card h2{font-size:1.3rem;font-weight:800;color:var(--machine);margin-bottom:.2rem;}
+    .login-card p{font-size:.84rem;color:var(--muted);margin-bottom:1.5rem;}
+    .login-field{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.85rem;}
+    .login-field label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+    .login-field input{padding:.6rem .8rem;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:.93rem;outline:none;transition:border-color .15s;}
+    .login-field input:focus{border-color:var(--machine);}
+    .login-err{font-size:.8rem;color:var(--kwal);min-height:1.1em;margin-bottom:.4rem;}
+    .btn-login{width:100%;padding:.75rem;background:var(--machine);color:#fff;font-size:.95rem;font-weight:700;border:none;border-radius:8px;cursor:pointer;transition:filter .2s;letter-spacing:.02em;}
+    .btn-login:hover{filter:brightness(1.1);}
+    .btn-login:disabled{opacity:.4;cursor:not-allowed;}
+    .btn-logout{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:.28rem .7rem;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600;transition:background .15s;}
+    .btn-logout:hover{background:rgba(255,255,255,.22);}
+    .opt-badge{display:inline-block;background:#eff6ff;color:var(--machine);border:1px solid #bfdbfe;border-radius:4px;font-size:.67rem;font-weight:700;padding:.05rem .35rem;vertical-align:middle;margin-left:.3rem;}
+    @media(prefers-color-scheme:dark){.opt-badge{background:#1e3a5f;border-color:#3b82f6;}}
     /* DEMO */
     .btn-demo{display:block;width:100%;margin-top:.65rem;padding:.7rem 2rem;background:transparent;color:var(--muted);font-size:.88rem;font-weight:600;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;transition:all .2s;letter-spacing:.01em;}
     .btn-demo:hover{border-color:var(--warn);color:var(--warn);background:rgba(217,119,6,.05);}
@@ -166,8 +183,26 @@
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="s-login">
+  <div class="login-card">
+    <h2>OEE Analyse DW08</h2>
+    <p>Metsä NL Winschoten · Inloggen vereist</p>
+    <div class="login-field">
+      <label>Gebruikersnaam</label>
+      <input type="text" id="l-user" autocomplete="username" placeholder="metsa" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Wachtwoord</label>
+      <input type="password" id="l-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-err" id="l-err"></div>
+    <button class="btn-login" id="btn-login" onclick="doLogin()">Inloggen</button>
+  </div>
+</div>
+
 <!-- UPLOAD SCREEN -->
-<div id="upload-screen">
+<div id="upload-screen" style="display:none">
   <div class="uph">
     <h1>OEE Analyse DW08</h1>
     <p>Upload vijf rapporten voor een complete AI-gestuurde shift-analyse</p>
@@ -209,10 +244,10 @@
     <div class="dz full" id="dz-loadlist" ondrop="onDrop(event,'loadlist')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
       <input type="file" accept=".xlsx,.xls" onchange="onFileSelect(event,'loadlist')">
       <div class="dz-icon">📦</div>
-      <div class="dz-title"><span class="dz-num">5</span>&nbsp;Orders &amp; Tonnen</div>
+      <div class="dz-title"><span class="dz-num">5</span>&nbsp;Orders &amp; Tonnen <span class="opt-badge">optioneel</span></div>
       <div class="dz-ext">.xls / .xlsx</div>
-      <div class="dz-hint">LoadList export — orders van de dag, gesneden meters, tonnen, ton/uur per order</div>
-      <div class="dz-status" id="st-loadlist">Sleep hier of klik om te kiezen</div>
+      <div class="dz-hint">LoadList export — orders van de dag, gesneden meters, tonnen, ton/uur per order. Niet vereist voor potentieel berekening.</div>
+      <div class="dz-status" id="st-loadlist">Optioneel — sleep hier of klik om te kiezen</div>
     </div>
   </div>
   <button class="btn-go" id="btn-go" disabled onclick="startAnalysis()">Analyseer shift →</button>
@@ -244,6 +279,7 @@
     <h1>OEE Dashboard — DW08<span class="demo-badge" id="demo-badge" style="display:none">DEMO</span></h1>
     <span class="dmeta">Metsä NL Winschoten · Shift 07:00–15:30</span>
     <button class="btn-back" onclick="showUpload()">← Nieuwe analyse</button>
+    <button class="btn-logout" onclick="doLogout()">Uitloggen</button>
   </div>
   <nav class="tab-nav">
     <button class="tab-btn active" onclick="switchTab(0)">📊 Overzicht</button>
@@ -317,6 +353,38 @@ function findCol(headers,...kws){return headers.findIndex(h=>kws.some(k=>cs(h).t
 function nextVal(cells,ci){for(let i=ci+1;i<cells.length;i++)if(cells[i])return cells[i];return'';}
 function wbRows(wb,si=0){const ws=wb.Sheets[wb.SheetNames[si]];if(!ws)return[];return XLSX.utils.sheet_to_json(ws,{header:1,defval:''});}
 
+// ══ AUTH ══
+async function doLogin(){
+  const user=document.getElementById('l-user').value.trim();
+  const pass=document.getElementById('l-pass').value;
+  const btn=document.getElementById('btn-login');
+  const err=document.getElementById('l-err');
+  if(!user||!pass){err.textContent='Vul gebruikersnaam en wachtwoord in.';return;}
+  btn.disabled=true;btn.textContent='Bezig…';err.textContent='';
+  try{
+    const res=await fetch(`/api/auth-check?user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`);
+    const data=await res.json();
+    if(data.ok){
+      sessionStorage.setItem('loggedIn','true');
+      document.getElementById('s-login').style.display='none';
+      document.getElementById('upload-screen').style.display='block';
+    } else {
+      err.textContent='Gebruikersnaam of wachtwoord onjuist.';
+    }
+  }catch(e){err.textContent='Verbindingsfout, probeer opnieuw.';}
+  btn.disabled=false;btn.textContent='Inloggen';
+}
+function doLogout(){
+  sessionStorage.clear();
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('s-login').style.display='block';
+  document.getElementById('demo-badge').style.display='none';
+  document.getElementById('demo-banner').style.display='none';
+}
+(function(){if(sessionStorage.getItem('loggedIn')==='true'){document.getElementById('s-login').style.display='none';document.getElementById('upload-screen').style.display='block';}})();
+
 // ══ FILE HANDLERS ══
 function onDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
 function onDragLeave(e){e.currentTarget.classList.remove('drag-over');}
@@ -327,7 +395,9 @@ function handleFile(f,k){
   const dz=document.getElementById('dz-'+k);const st=document.getElementById('st-'+k);
   dz.classList.add('loaded');dz.classList.remove('err');
   st.className='dz-status ok';st.textContent='✓ '+f.name;
-  document.getElementById('btn-go').disabled=!Object.values(STATE.files).every(x=>x!==null);
+  // Loadlist is optioneel — alleen de eerste 4 bestanden zijn verplicht
+  const required=['oee','sluis','sense','events'];
+  document.getElementById('btn-go').disabled=!required.every(k=>STATE.files[k]!==null);
 }
 
 // ══ STEP ══
@@ -581,8 +651,20 @@ function calcOEE(parsed){
 function calcPotential(parsed,calc){
   const sense=parsed.sense||{};const sluis=parsed.sluis||{};const ll=parsed.loadlist||{};
   const totalMT=ll.totalMT||0;const totalM=ll.totalNetProdM||0;
+  const hasLoadlist=totalM>0;
   const avgSpd=sense.avgRunningSpeed||0;
-  const realTPM=totalM>0?totalMT/totalM:0;
+  // realTPM: uit loadlist indien beschikbaar, anders schat op basis van gsm/breedte
+  const avgGsm=ll.avgGsm||parsed.oee?.avgGsm||280;
+  const avgWidthM=(ll.avgWidthMm||parsed.oee?.avgWidthMm||1650)/1000;
+  const realTPM=totalM>0?totalMT/totalM:avgGsm*avgWidthM/1e6;
+  const avgTonH=ll.avgTonH||Math.round(avgSpd*60*realTPM*10)/10;
+  // Snelheidsgebaseerd potentieel (altijd beschikbaar via SenSe + OEE)
+  const opDownMin=calc.opDownMin||0;
+  const extraM=Math.round(opDownMin*avgSpd);
+  const extraMT=Math.round(extraM*realTPM*100)/100;
+  const realistischExtraM=Math.round(opDownMin*0.6*avgSpd);
+  const realistischExtraMT=Math.round(realistischExtraM*realTPM*100)/100;
+  // Traditionele scenario berekening
   const sluisMin=sluis.totalSluisDowntimeMin||sense.rejectGateOpenMinutes||0;
   const apt=calc.apt||SHIFT_MIN;
   const fmtEvents=(parsed.events?.events||[]).filter(e=>{const c=(e.cat||'').toLowerCase();return c.includes('formaat')||c.includes('format')||c.includes('wisseling')||c.includes('rts')||c.includes('changeover');});
@@ -595,7 +677,8 @@ function calcPotential(parsed,calc){
   const sp280Gain=(sense.runningMinutes||0)*Math.max(0,280-avgSpd)*realTPM;
   const s4=s3+sp280Gain;
   const s5=Math.max(s4,apt*350*realTPM);
-  return{s1,s2,s3,s4,s5,sGain,eGain,sp280Gain,realTPM,totalMT,totalM,avgSpd};
+  return{s1,s2,s3,s4,s5,sGain,eGain,sp280Gain,realTPM,totalMT,totalM,avgSpd,
+    hasLoadlist,opDownMin,extraM,extraMT,realistischExtraM,realistischExtraMT,avgTonH};
 }
 
 function calcOrderPotentieel(parsed,calc){
@@ -690,7 +773,7 @@ async function startAnalysis(){
     setStep(1,'active');STATE.parsed.sluis=await parseSluis(STATE.files.sluis);setStep(1,'done');
     setStep(2,'active');STATE.parsed.sense=await parseSense(STATE.files.sense);setStep(2,'done');
     setStep(3,'active');STATE.parsed.events=await parseEvents(STATE.files.events);setStep(3,'done');
-    setStep(4,'active');STATE.parsed.loadlist=await parseLoadList(STATE.files.loadlist);setStep(4,'done');
+    setStep(4,'active');STATE.parsed.loadlist=STATE.files.loadlist?await parseLoadList(STATE.files.loadlist):null;setStep(4,'done');
     setStep(5,'active');STATE.calc=calcOEE(STATE.parsed);STATE.pot=calcPotential(STATE.parsed,STATE.calc);STATE.orderPot=calcOrderPotentieel(STATE.parsed,STATE.calc);STATE.opstartAnalyse=calcOpstartAnalyse(STATE.orderPot,STATE.parsed);setStep(5,'done');
     setStep(6,'active');
     try{STATE.ai=await callAI(buildPrompt(STATE.parsed,STATE.calc));}catch(e){console.warn('AI:',e.message);STATE.ai=null;}
@@ -732,7 +815,7 @@ const _dExtra=[
 ];
 const DEMO_DATA={
   calc:{oee:58.7,beschikb:96.8,prestatie:78.2,kwal:77.4,apt:496,notSchedMin:0,planDownMin:14,opDownMin:127},
-  pot:{s1:41.3,s2:42.4,s3:43.2,s4:51.8,s5:64.2,sGain:1.1,eGain:0.8,sp280Gain:8.6,totalMT:41.3,totalM:118420,avgSpd:248,realTPM:41.3/118420},
+  pot:{s1:41.3,s2:42.4,s3:43.2,s4:51.8,s5:64.2,sGain:1.1,eGain:0.8,sp280Gain:8.6,totalMT:41.3,totalM:118420,avgSpd:248,realTPM:41.3/118420,hasLoadlist:true,opDownMin:127,extraM:31496,extraMT:10.98,realistischExtraM:18898,realistischExtraMT:6.59,avgTonH:4.7},
   ai:{
     machine:{score:38,total_min:37,
       verdict:'Slowbelt is de grootste verliespost met 5 events en 12 minuten stilstand. Sensor 509 offset veroorzaakt 3 onnodige stops. Alarmcodes 1289 en 1281 vragen rootcause analyse.',
@@ -954,7 +1037,32 @@ function renderTab1(){
     <li><strong>Machine uptime maximaliseren</strong> — Predictief onderhoud op basis van alarmpatronen, snelle interventie bij storingen, reduceer reactietijd.</li>
     <li><strong>Theoretisch maximum: ${fMT(pot.s5)}</strong> — Volledige APT (${fMin(calc.apt)}) op 350 m/min. Streefwaarde bij optimale procesbeheersing.</li>
   </ul></div>
-  ${(()=>{const op=STATE.orderPot;if(!op||!op.extraOrders?.length)return'';return`<div class="card" style="border-top:3px solid var(--win)"><div class="card-title">Extra orders mogelijk <small style="color:var(--muted);font-weight:400">${fMin(op.extraMin)} ongeplande stilstand</small></div><div class="tbl-wrap"><table><thead><tr><th>Order</th><th>Product</th><th>GSM</th><th>Est.Run (min)</th><th>Verwachte MT</th></tr></thead><tbody>${op.extraOrders.map(o=>`<tr><td>${o.order}</td><td>${o.product||'–'}</td><td>${o.gsm||'–'}</td><td>${fmt(o.estRun,0)}</td><td>${fmt(o.mt,2)}</td></tr>`).join('')}</tbody></table></div><div style="margin-top:.7rem;padding:.65rem;background:var(--bg);border-radius:8px;font-size:.84rem;font-weight:700;color:var(--win)">${op.extraOrders.length} orders · ${fMT(op.extraMT)} · ${fmt(op.extraM,0)} meter extra mogelijk geweest</div></div>`;})()}`;
+  ${(()=>{
+    const pot2=STATE.pot||{};
+    const{opDownMin=0,avgSpd=0,extraM=0,extraMT=0,realistischExtraM=0,realistischExtraMT=0,avgTonH=0,hasLoadlist=false}=pot2;
+    if(!avgSpd||!opDownMin)return'';
+    const tpmNote=hasLoadlist?'':'<small style="color:var(--muted)"> (geschat op basis van gem. GSM &amp; breedte)</small>';
+    return`<div class="card" style="border-top:3px solid var(--machine)">
+      <div class="card-title">Stilstandpotentieel op basis van snelheid</div>
+      <p style="font-size:.85rem;color:var(--muted);line-height:1.65;margin-bottom:1rem">
+        Op basis van <strong>${fMin(opDownMin)}</strong> ongeplande stilstand en een gemiddelde snelheid van
+        <strong>${fmt(avgSpd,0)} m/min</strong> had de machine extra kunnen snijden.
+        Bij een gemiddeld rendement van <strong>${fmt(avgTonH,1)} ton/u</strong>${tpmNote}:
+      </p>
+      <div class="row2" style="margin-bottom:0">
+        <div style="background:var(--bg);border:1px solid var(--border);border-top:3px solid var(--win);border-radius:var(--r);padding:1rem">
+          <div class="kpi-lbl">Volledige eliminatie stilstand</div>
+          <div style="font-size:1.55rem;font-weight:800;color:var(--win);margin:.2rem 0 .1rem">${fmt(extraM,0)} m</div>
+          <div class="kpi-sub">≈ ${fMT(extraMT)} extra</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-top:3px solid var(--machine);border-radius:var(--r);padding:1rem">
+          <div class="kpi-lbl">Realistisch (60% reductie)</div>
+          <div style="font-size:1.55rem;font-weight:800;color:var(--machine);margin:.2rem 0 .1rem">${fmt(realistischExtraM,0)} m</div>
+          <div class="kpi-sub">≈ ${fMT(realistischExtraMT)} extra</div>
+        </div>
+      </div>
+    </div>`;
+  })()}`;
 }
 
 // ══ TAB 2: OEE ══
