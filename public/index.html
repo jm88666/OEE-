@@ -246,6 +246,7 @@
     <button class="tab-btn" onclick="switchTab(4)">⚙️ Machine</button>
     <button class="tab-btn" onclick="switchTab(5)">👷 Operator</button>
     <button class="tab-btn" onclick="switchTab(6)">✅ Kwaliteit</button>
+    <button class="tab-btn" onclick="switchTab(7)">📦 Orders &amp; Snelheid</button>
   </nav>
   <div class="tab-content">
     <div class="tab-pane active" id="tab-0"></div>
@@ -255,15 +256,35 @@
     <div class="tab-pane" id="tab-4"></div>
     <div class="tab-pane" id="tab-5"></div>
     <div class="tab-pane" id="tab-6"></div>
+    <div class="tab-pane" id="tab-7"></div>
   </div>
 </div>
 
 <script>
 // ══ STATE ══
-const STATE={files:{oee:null,sluis:null,sense:null,events:null,loadlist:null},parsed:{oee:null,sluis:null,sense:null,events:null,loadlist:null},calc:null,pot:null,ai:null};
+const STATE={files:{oee:null,sluis:null,sense:null,events:null,loadlist:null},parsed:{oee:null,sluis:null,sense:null,events:null,loadlist:null},calc:null,pot:null,ai:null,orderPot:null};
 const CHARTS={};
 const SHIFT_MIN=510;
 const C={machine:'#2563EB',operator:'#B45309',kwal:'#DC2626',sluis:'#7C3AED',win:'#15803D',warn:'#D97706',neutral:'#9CA3AF'};
+
+// ══ SPEED CURVE ══
+const speedCurve=[[300,100],[400,130],[500,180],[600,270],[700,320],[750,335],[800,350],[900,350],[1000,350],[1100,340],[1200,320],[1300,300],[1400,285],[1500,275],[1600,270]];
+function maxSpeedForOrder(size_mm){
+  if(size_mm<=300)return 100;
+  if(size_mm>=1600)return 270;
+  for(let i=0;i<speedCurve.length-1;i++){
+    if(speedCurve[i][0]<=size_mm&&size_mm<=speedCurve[i+1][0]){
+      const t=(size_mm-speedCurve[i][0])/(speedCurve[i+1][0]-speedCurve[i][0]);
+      return speedCurve[i][1]+t*(speedCurve[i+1][1]-speedCurve[i][1]);
+    }
+  }
+  return 350;
+}
+function xlDateStr(val){
+  if(!val&&val!==0)return'';
+  if(typeof val==='number'){const d=new Date(Math.round((val-25569)*86400*1000));return`${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${String(d.getUTCFullYear()).slice(2)}`;}
+  return String(val).trim();
+}
 
 // ══ UTILS ══
 function pNum(s){if(s===null||s===undefined)return 0;if(typeof s==='number')return isNaN(s)?0:s;return parseFloat(String(s).replace(',','.').replace('%','').trim())||0;}
@@ -480,10 +501,14 @@ async function parseLoadList(file){
     const iPrd=findCol(headers,'product','artikel');
     const iGSM=findCol(headers,'gsm');
     const iSz=findCol(headers,'size 1','size1','breedte','width');
+    const iSz2=findCol(headers,'size 2','size2');
     const iNP=findCol(headers,'net prod','netprod');
     const iNU=findCol(headers,'net used','netused');
     const iTH=findCol(headers,'ton/h','ton/u','tonh');
     const iTm=findCol(headers,'time','tijd');
+    const iStart=findCol(headers,'start');
+    const iEnd=findCol(headers,'end','eind');
+    const iEst=findCol(headers,'est run','estrun','est. run','est.run');
     for(let ri=hdr+1;ri<rows.length;ri++){
       const row=rows[ri];const cells=row.map(cs);
       const rowStr=cells.join('|').toLowerCase();
@@ -493,14 +518,24 @@ async function parseLoadList(file){
       if(!ordVal||!/\d/.test(ordVal))continue;
       const gsm=iGSM>=0?pNum(row[iGSM]):0;
       const widthMm=iSz>=0?pNum(row[iSz]):0;
+      const widthMm2=iSz2>=0?pNum(row[iSz2]):0;
+      const vellengrootte=Math.max(widthMm,widthMm2)||widthMm;
       const netProdM=iNP>=0?pNum(row[iNP]):0;
       const netUsedM=iNU>=0?pNum(row[iNU]):0;
       const tonH=iTH>=0?pNum(row[iTH]):0;
       const timeMin=iTm>=0?pNum(row[iTm]):0;
+      const estRun=iEst>=0?pNum(row[iEst]):0;
+      const startRaw=iStart>=0?row[iStart]:'';
+      const endRaw=iEnd>=0?row[iEnd]:'';
+      const startDateStr=xlDateStr(startRaw);
+      const hasEnd=!!(endRaw||endRaw===0)&&endRaw!=='';
       const npM=netProdM||netUsedM;
       if(npM<=0)continue;
       const mt=(gsm&&widthMm&&npM)?gsm*(widthMm/1000)*npM/1e6:0;
-      res.orders.push({order:ordVal,product:iPrd>=0?cells[iPrd]:'',gsm,widthMm,netProdM:npM,mt,tonH,timeMin});
+      const maxSpd=vellengrootte>0?maxSpeedForOrder(vellengrootte):0;
+      const actualSpd=timeMin>0?npM/timeMin:0;
+      const speedUtil=maxSpd>0&&actualSpd>0?actualSpd/maxSpd*100:0;
+      res.orders.push({order:ordVal,product:iPrd>=0?cells[iPrd]:'',gsm,widthMm,widthMm2,vellengrootte,netProdM:npM,mt,tonH,timeMin,estRun,maxSpd,actualSpd,speedUtil,startDateStr,hasEnd});
     }
     if(res.orders.length)break;
   }
@@ -553,6 +588,29 @@ function calcPotential(parsed,calc){
   return{s1,s2,s3,s4,s5,sGain,eGain,sp280Gain,realTPM,totalMT,totalM,avgSpd};
 }
 
+function calcOrderPotentieel(parsed,calc){
+  const ll=parsed.loadlist||{};
+  const orders=ll.orders||[];
+  if(!orders.length)return null;
+  // Determine shift date: most common startDateStr among completed orders (hasEnd=true)
+  const dateCounts={};
+  orders.forEach(o=>{if(o.hasEnd&&o.startDateStr)dateCounts[o.startDateStr]=(dateCounts[o.startDateStr]||0)+1;});
+  const shiftDate=Object.entries(dateCounts).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+  // Gedraaide orders: start = shiftDate AND has End
+  const gedraaid=shiftDate?orders.filter(o=>o.startDateStr===shiftDate&&o.hasEnd):orders.filter(o=>o.hasEnd);
+  const gedraaidSet=new Set(gedraaid.map(o=>o.order));
+  const nietGedraaid=orders.filter(o=>!gedraaidSet.has(o.order));
+  // Available extra minutes = ongeplande stilstand
+  const extraMin=calc.opDownMin||0;
+  // Sort niet-gedraaid by estRun (shortest first), only those with estRun > 0
+  const kandidaten=[...nietGedraaid].filter(o=>o.estRun>0).sort((a,b)=>a.estRun-b.estRun);
+  const extraOrders=[];let usedMin=0;
+  for(const o of kandidaten){if(usedMin+o.estRun<=extraMin){extraOrders.push(o);usedMin+=o.estRun;}else break;}
+  return{shiftDate,gedraaid,nietGedraaid,extraMin,extraOrders,extraUsedMin:usedMin,
+    extraMT:extraOrders.reduce((s,o)=>s+(o.mt||0),0),
+    extraM:extraOrders.reduce((s,o)=>s+(o.netProdM||0),0)};
+}
+
 // ══ AI ══
 function buildPrompt(parsed,calc){
   const l=[];
@@ -599,7 +657,7 @@ async function startAnalysis(){
     setStep(2,'active');STATE.parsed.sense=await parseSense(STATE.files.sense);setStep(2,'done');
     setStep(3,'active');STATE.parsed.events=await parseEvents(STATE.files.events);setStep(3,'done');
     setStep(4,'active');STATE.parsed.loadlist=await parseLoadList(STATE.files.loadlist);setStep(4,'done');
-    setStep(5,'active');STATE.calc=calcOEE(STATE.parsed);STATE.pot=calcPotential(STATE.parsed,STATE.calc);setStep(5,'done');
+    setStep(5,'active');STATE.calc=calcOEE(STATE.parsed);STATE.pot=calcPotential(STATE.parsed,STATE.calc);STATE.orderPot=calcOrderPotentieel(STATE.parsed,STATE.calc);setStep(5,'done');
     setStep(6,'active');
     try{STATE.ai=await callAI(buildPrompt(STATE.parsed,STATE.calc));}catch(e){console.warn('AI:',e.message);STATE.ai=null;}
     setStep(6,'done');
@@ -620,7 +678,7 @@ function showUpload(){
 function switchTab(n){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===n));
   document.querySelectorAll('.tab-pane').forEach((p,i)=>p.classList.toggle('active',i===n));
-  [renderTab0,renderTab1,renderTab2,renderTab3,renderTab4,renderTab5,renderTab6][n]?.();
+  [renderTab0,renderTab1,renderTab2,renderTab3,renderTab4,renderTab5,renderTab6,renderTab7][n]?.();
 }
 
 // ══ HELPERS ══
@@ -698,7 +756,8 @@ function renderTab1(){
     <li><strong>Rijsnelheid naar 280 m/min</strong> — Huidige gem. rijsnelheid: ${fmt(pot.avgSpd,0)} m/min. Optimaliseer instelparameters voor hogere snelheid zonder kwaliteitsverlies. Potentieel: <strong>+${fMT(pot.sp280Gain)}</strong></li>
     <li><strong>Machine uptime maximaliseren</strong> — Predictief onderhoud op basis van alarmpatronen, snelle interventie bij storingen, reduceer reactietijd.</li>
     <li><strong>Theoretisch maximum: ${fMT(pot.s5)}</strong> — Volledige APT (${fMin(calc.apt)}) op 350 m/min. Streefwaarde bij optimale procesbeheersing.</li>
-  </ul></div>`;
+  </ul></div>
+  ${(()=>{const op=STATE.orderPot;if(!op||!op.extraOrders?.length)return'';return`<div class="card" style="border-top:3px solid var(--win)"><div class="card-title">Extra orders mogelijk <small style="color:var(--muted);font-weight:400">${fMin(op.extraMin)} ongeplande stilstand</small></div><div class="tbl-wrap"><table><thead><tr><th>Order</th><th>Product</th><th>GSM</th><th>Est.Run (min)</th><th>Verwachte MT</th></tr></thead><tbody>${op.extraOrders.map(o=>`<tr><td>${o.order}</td><td>${o.product||'–'}</td><td>${o.gsm||'–'}</td><td>${fmt(o.estRun,0)}</td><td>${fmt(o.mt,2)}</td></tr>`).join('')}</tbody></table></div><div style="margin-top:.7rem;padding:.65rem;background:var(--bg);border-radius:8px;font-size:.84rem;font-weight:700;color:var(--win)">${op.extraOrders.length} orders · ${fMT(op.extraMT)} · ${fmt(op.extraM,0)} meter extra mogelijk geweest</div></div>`;})()}`;
 }
 
 // ══ TAB 2: OEE ══
@@ -789,6 +848,44 @@ function renderTab6(){
   ${prot.length?`<div class="card"><div class="card-title">🔧 5-stappen kwaliteitsprotocol</div><ol class="protocol">${prot.map(s=>`<li>${s}</li>`).join('')}</ol></div>`:''}
   ${ai.events?.length?`<div class="card"><div class="card-title">Kwaliteit events</div><div class="tbl-wrap"><table><thead><tr><th>Tijd</th><th>Min</th><th>Event</th><th>Oorzaak</th></tr></thead><tbody>${ai.events.map(e=>`<tr><td>${e.t||'–'}</td><td>${e.dur_min||0}</td><td>${e.label||'–'}</td><td>${e.oorzaak||'–'}</td></tr>`).join('')}</tbody></table></div></div>`:''}`;
   topChart('c-kw',ai.top_oorzaken,C.kwal);
+}
+
+// ══ TAB 7: ORDERS & SNELHEID ══
+function renderTab7(){
+  const op=STATE.orderPot||{};
+  const gedraaid=op.gedraaid||[];
+  const extraOrders=op.extraOrders||[];
+  const extraMin=op.extraMin||0;
+  // Build speed curve points
+  const scPoints=[];for(let sz=300;sz<=1600;sz+=10)scPoints.push({x:sz,y:Math.round(maxSpeedForOrder(sz)*10)/10});
+  document.getElementById('tab-7').innerHTML=`
+  <div class="card">
+    <div class="card-title">Speed curve — vellengrootte → max snelheid</div>
+    <canvas id="c-spdcurve" style="max-height:260px"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Gedraaide orders${op.shiftDate?' — '+op.shiftDate:''} <small style="color:var(--muted);font-weight:400">(snelheidsbenutting: <span class="c-good">groen ≥85%</span> · <span class="c-warn">amber ≥70%</span> · <span class="c-bad">rood &lt;70%</span>)</small></div>
+    ${gedraaid.length?`<div class="tbl-wrap"><table><thead><tr><th>Order</th><th>Product</th><th>GSM</th><th>Vellen mm</th><th>Max m/min</th><th>Werkelijk</th><th>Benutting%</th><th>Prod.m</th><th>Ton/u</th><th>MT</th></tr></thead><tbody>
+    ${gedraaid.map(o=>{const cls=o.speedUtil>=85?'c-good':o.speedUtil>=70?'c-warn':'c-bad';return`<tr><td>${o.order}</td><td>${o.product||'–'}</td><td>${o.gsm||'–'}</td><td>${o.vellengrootte||o.widthMm||'–'}</td><td>${fmt(o.maxSpd,0)}</td><td>${fmt(o.actualSpd,0)}</td><td class="${cls}">${fmt(o.speedUtil,1)}%</td><td>${fmt(o.netProdM,0)}</td><td>${fmt(o.tonH,2)}</td><td>${fmt(o.mt,2)}</td></tr>`;}).join('')}
+    </tbody></table></div>`:'<p style="color:var(--muted);font-size:.82rem">Geen gedraaide orders gevonden voor de shift datum.</p>'}
+  </div>
+  ${extraOrders.length?`<div class="card" style="border-top:3px solid var(--win)">
+    <div class="card-title">Extra orders die erin hadden gepast <small style="color:var(--muted);font-weight:400">${fMin(extraMin)} ongeplande stilstand beschikbaar</small></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Order</th><th>Product</th><th>GSM</th><th>Est.Run (min)</th><th>Verwachte MT</th></tr></thead><tbody>
+    ${extraOrders.map(o=>`<tr><td>${o.order}</td><td>${o.product||'–'}</td><td>${o.gsm||'–'}</td><td>${fmt(o.estRun,0)}</td><td>${fmt(o.mt,2)}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div style="margin-top:.8rem;padding:.75rem;background:var(--bg);border-radius:8px;font-size:.88rem;font-weight:700;color:var(--win)">${extraOrders.length} orders · ${fMT(op.extraMT)} · ${fmt(op.extraM,0)} meter extra mogelijk geweest</div>
+  </div>`:''}
+  <div class="card">
+    <div class="card-title">Snelheidsbenutting per order (gedraaid)</div>
+    <canvas id="c-speedutil" style="max-height:200px"></canvas>
+  </div>`;
+  // Speed curve chart
+  mkC('c-spdcurve',{type:'line',data:{datasets:[{label:'Max snelheid (m/min)',data:scPoints,borderColor:C.machine,backgroundColor:C.machine+'22',fill:true,pointRadius:0,tension:0.3}]},options:{responsive:true,scales:{x:{type:'linear',min:300,max:1600,title:{display:true,text:'Vellengrootte (mm)'}},y:{min:0,max:380,title:{display:true,text:'Max snelheid (m/min)'}}},plugins:{legend:{display:false}}}});
+  // Speed utilization bar chart
+  if(gedraaid.length){
+    mkC('c-speedutil',{type:'bar',data:{labels:gedraaid.map(o=>o.order),datasets:[{label:'Benutting %',data:gedraaid.map(o=>Math.round(o.speedUtil*10)/10),backgroundColor:gedraaid.map(o=>o.speedUtil>=85?C.win+'cc':o.speedUtil>=70?C.warn+'cc':C.kwal+'cc'),borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:110,title:{display:true,text:'Snelheidsbenutting %'}}}}});
+  }
 }
 </script>
 </body>
