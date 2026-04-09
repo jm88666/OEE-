@@ -156,6 +156,12 @@
     .c-warn{color:var(--warn);font-weight:700;}
     .c-bad{color:var(--kwal);font-weight:700;}
     @media(max-width:580px){.tab-content{padding:.7rem;}.kpi-val{font-size:1.45rem;}}
+    /* DEMO */
+    .btn-demo{display:block;width:100%;margin-top:.65rem;padding:.7rem 2rem;background:transparent;color:var(--muted);font-size:.88rem;font-weight:600;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;transition:all .2s;letter-spacing:.01em;}
+    .btn-demo:hover{border-color:var(--warn);color:var(--warn);background:rgba(217,119,6,.05);}
+    .demo-badge{background:#D97706;color:#fff;border-radius:99px;padding:.15rem .55rem;font-size:.72rem;font-weight:800;letter-spacing:.05em;margin-left:.5rem;vertical-align:middle;}
+    .demo-banner{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:.65rem 1rem;margin-bottom:.9rem;font-size:.83rem;color:#92400e;font-weight:500;}
+    @media(prefers-color-scheme:dark){.demo-banner{background:#451a03;border-color:#92400e;color:#fde68a;}}
   </style>
 </head>
 <body>
@@ -210,6 +216,7 @@
     </div>
   </div>
   <button class="btn-go" id="btn-go" disabled onclick="startAnalysis()">Analyseer shift →</button>
+  <button class="btn-demo" onclick="startDemo()">Bekijk demo rapport →</button>
 </div>
 
 <!-- LOADING SCREEN -->
@@ -234,7 +241,7 @@
 <!-- DASHBOARD -->
 <div id="dashboard">
   <div class="dsh">
-    <h1>OEE Dashboard — DW08</h1>
+    <h1>OEE Dashboard — DW08<span class="demo-badge" id="demo-badge" style="display:none">DEMO</span></h1>
     <span class="dmeta">Metsä NL Winschoten · Shift 07:00–15:30</span>
     <button class="btn-back" onclick="showUpload()">← Nieuwe analyse</button>
   </div>
@@ -249,6 +256,7 @@
     <button class="tab-btn" onclick="switchTab(7)">📦 Orders &amp; Snelheid</button>
   </nav>
   <div class="tab-content">
+    <div class="demo-banner" id="demo-banner" style="display:none">📋 Dit is een demorapport met voorbeelddata — geen echte shift data</div>
     <div class="tab-pane active" id="tab-0"></div>
     <div class="tab-pane" id="tab-1"></div>
     <div class="tab-pane" id="tab-2"></div>
@@ -672,6 +680,166 @@ function showUpload(){
   document.getElementById('dashboard').style.display='none';
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('upload-screen').style.display='block';
+  document.getElementById('demo-badge').style.display='none';
+  document.getElementById('demo-banner').style.display='none';
+}
+
+// ══ DEMO ══
+const _dRan=[
+  {order:'305454',product:'PRIFBBBRN305R',gsm:305,widthMm:749,widthMm2:0,vellengrootte:749,netProdM:1060,mt:0.24,tonH:5.3,timeMin:12,estRun:0,maxSpd:335,actualSpd:225,speedUtil:67.2,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305371',product:'PROFBBBRN290R',gsm:290,widthMm:805,widthMm2:0,vellengrootte:805,netProdM:3060,mt:0.71,tonH:4.7,timeMin:39,estRun:0,maxSpd:350,actualSpd:280,speedUtil:80.0,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305679',product:'PROFBBGO275R',gsm:275,widthMm:1020,widthMm2:0,vellengrootte:1020,netProdM:636,mt:0.18,tonH:2.4,timeMin:16,estRun:0,maxSpd:348,actualSpd:205,speedUtil:58.9,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305612',product:'PROFBBGO225R',gsm:225,widthMm:900,widthMm2:0,vellengrootte:900,netProdM:8760,mt:1.77,tonH:6.7,timeMin:78,estRun:0,maxSpd:350,actualSpd:290,speedUtil:82.9,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305544',product:'PRIFBBBRN255R',gsm:255,widthMm:1000,widthMm2:0,vellengrootte:1000,netProdM:2072,mt:0.53,tonH:4.1,timeMin:30,estRun:0,maxSpd:350,actualSpd:265,speedUtil:75.7,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305516',product:'PRIFBBBRN270R',gsm:270,widthMm:900,widthMm2:0,vellengrootte:900,netProdM:5056,mt:1.23,tonH:7.1,timeMin:43,estRun:0,maxSpd:350,actualSpd:295,speedUtil:84.3,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305449',product:'PRIFBBBRN280R',gsm:280,widthMm:730,widthMm2:0,vellengrootte:730,netProdM:4008,mt:0.82,tonH:2.7,timeMin:89,estRun:0,maxSpd:329,actualSpd:190,speedUtil:57.8,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305500',product:'PRIFBBBRN170R',gsm:170,widthMm:995,widthMm2:0,vellengrootte:995,netProdM:3200,mt:0.54,tonH:3.1,timeMin:52,estRun:0,maxSpd:350,actualSpd:195,speedUtil:55.7,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305380',product:'PROFBBBRN310R',gsm:310,widthMm:820,widthMm2:0,vellengrootte:820,netProdM:2140,mt:0.54,tonH:4.8,timeMin:28,estRun:0,maxSpd:350,actualSpd:270,speedUtil:77.1,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305391',product:'PRIFBBBRN245R',gsm:245,widthMm:780,widthMm2:0,vellengrootte:780,netProdM:1890,mt:0.36,tonH:3.6,timeMin:31,estRun:0,maxSpd:344,actualSpd:245,speedUtil:71.2,startDateStr:'08/04/26',hasEnd:true},
+  {order:'305402',product:'PROFBBGO260R',gsm:260,widthMm:940,widthMm2:0,vellengrootte:940,netProdM:4850,mt:1.18,tonH:5.2,timeMin:55,estRun:0,maxSpd:350,actualSpd:260,speedUtil:74.3,startDateStr:'08/04/26',hasEnd:true},
+];
+const _dExtra=[
+  {order:'305510',product:'PRIFBBBRN285R',gsm:285,widthMm:760,widthMm2:0,vellengrootte:760,netProdM:9231,mt:2.0,tonH:0,timeMin:0,estRun:28,maxSpd:338,actualSpd:0,speedUtil:0,startDateStr:'',hasEnd:false},
+  {order:'305521',product:'PROFBBGO240R',gsm:240,widthMm:890,widthMm2:0,vellengrootte:890,netProdM:9370,mt:2.0,tonH:0,timeMin:0,estRun:35,maxSpd:350,actualSpd:0,speedUtil:0,startDateStr:'',hasEnd:false},
+  {order:'305532',product:'PRIFBBBRN300R',gsm:300,widthMm:810,widthMm2:0,vellengrootte:810,netProdM:9053,mt:2.2,tonH:0,timeMin:0,estRun:31,maxSpd:350,actualSpd:0,speedUtil:0,startDateStr:'',hasEnd:false},
+  {order:'305543',product:'PROFBBBRN265R',gsm:265,widthMm:950,widthMm2:0,vellengrootte:950,netProdM:7948,mt:2.0,tonH:0,timeMin:0,estRun:33,maxSpd:350,actualSpd:0,speedUtil:0,startDateStr:'',hasEnd:false},
+];
+const DEMO_DATA={
+  calc:{oee:58.7,beschikb:96.8,prestatie:78.2,kwal:77.4,apt:496,notSchedMin:0,planDownMin:14,opDownMin:127},
+  pot:{s1:41.3,s2:42.4,s3:43.2,s4:51.8,s5:64.2,sGain:1.1,eGain:0.8,sp280Gain:8.6,totalMT:41.3,totalM:118420,avgSpd:248,realTPM:41.3/118420},
+  ai:{
+    machine:{score:38,total_min:37,
+      verdict:'Slowbelt is de grootste verliespost met 5 events en 12 minuten stilstand. Sensor 509 offset veroorzaakt 3 onnodige stops. Alarmcodes 1289 en 1281 vragen rootcause analyse.',
+      top_oorzaken:[{naam:'Slowbelt',events:5,min:12},{naam:'Sensor 509',events:3,min:9},{naam:'Alarm 1289',events:1,min:8},{naam:'Alarm 1281',events:1,min:5},{naam:'Alarm 97',events:2,min:3}],
+      verbeteringen:[
+        {titel:'Slowbelt structureel oplossen',omschrijving:'5 events suggereren slijtage of spanning. Vervang slowbelt preventief en stel spanning opnieuw in.',prioriteit:'hoog',winst_min:12},
+        {titel:'Sensor 509 offsetinstelling',omschrijving:'Sensor triggert te snel. Offset bijstellen en valideren op meerdere producten.',prioriteit:'hoog',winst_min:9},
+        {titel:'Alarmcode 1289 rootcause',omschrijving:'8 minuten downtime, oorzaak onbekend. Logboek analyseren en PLC dump opvragen bij technische dienst.',prioriteit:'middel',winst_min:0},
+      ],
+      alarm_analyse:'Alarm 97 (3 min, 2x) is een leeg-loop alarm, gecombineerd met operator event. Alarm 1289 (8 min) en 1281 (5 min) zijn machine-specifiek en vragen rootcause analyse. Totaal 25 min alarmgerelateerde stilstand.',
+      events:[
+        {t:'07:15',dur_min:3,label:'Slowbelt',oorzaak:'Belt spanning'},{t:'07:35',dur_min:2,label:'Slowbelt',oorzaak:''},
+        {t:'08:45',dur_min:3,label:'Sensor 509',oorzaak:'Offset drift'},{t:'09:20',dur_min:1,label:'Alarm 97',oorzaak:'Leeg loop'},
+        {t:'10:30',dur_min:3,label:'Slowbelt',oorzaak:''},{t:'11:45',dur_min:8,label:'Alarm 1289',oorzaak:'Rootcause onbekend'},
+        {t:'12:20',dur_min:2,label:'Slowbelt',oorzaak:''},{t:'12:55',dur_min:3,label:'Sensor 509',oorzaak:''},
+        {t:'13:30',dur_min:5,label:'Alarm 1281',oorzaak:''},{t:'14:10',dur_min:2,label:'Slowbelt',oorzaak:''},
+        {t:'14:40',dur_min:3,label:'Sensor 509',oorzaak:''},{t:'14:50',dur_min:1,label:'Alarm 97',oorzaak:'Leeg loop'},
+      ]},
+    operator:{score:62,total_min:18,
+      verdict:'Snelheidsbeperking bij 170 gsm orders kost structureel tijd. Alarm 97 leeg loop procedure wordt niet consequent gevolgd. Goede insteltijden bij zware orders.',
+      top_oorzaken:[{naam:'Snelheidsbeperking 170gsm',events:3,min:15},{naam:'Alarm 97 leeg loop',events:2,min:3}],
+      verbeteringen:[
+        {titel:'170 gsm snelheid: engineering actie',omschrijving:'Order 305500 (170gsm) loopt op 195 m/min terwijl machine meer aankan. Engineering onderzoek naar snelheidsparameters voor lage grammatuur.',prioriteit:'hoog',winst_min:0},
+        {titel:'Alarm 97 leeg loop procedure',omschrijving:'2 events, 3 min verlies. Protocol aanscherpen: bij Alarm 97 direct leeg lopen voor reset.',prioriteit:'middel',winst_min:3},
+      ],
+      events:[
+        {t:'08:30',dur_min:5,label:'Snelheidsbeperking 170gsm',oorzaak:'GSM 170 max snelheid protocol'},
+        {t:'09:20',dur_min:2,label:'Alarm 97 leeg loop',oorzaak:'Procedure niet gevolgd'},
+        {t:'11:10',dur_min:5,label:'Snelheidsbeperking 170gsm',oorzaak:''},
+        {t:'13:50',dur_min:5,label:'Snelheidsbeperking 170gsm',oorzaak:'Engineering actie vereist'},
+        {t:'14:20',dur_min:1,label:'Alarm 97 leeg loop',oorzaak:''},
+      ]},
+    kwaliteit:{score:71,total_min:18,
+      verdict:'Halve maan 2x gevonden bij inladen, hoekjes dubbel 2x door bokken-instelling afwijking. Kwaliteitsprotocol versterken met pre-check procedure.',
+      top_oorzaken:[{naam:'Halve maan',events:2,min:10},{naam:'Hoekjes dubbel',events:2,min:8}],
+      verbeteringen:[
+        {titel:'Hoekjes dubbel: bokken-instelling',omschrijving:'2 events met dubbele hoekjes. Bokken-instelling controleren bij formaatwisseling met >50mm verschil.',prioriteit:'hoog',winst_min:0},
+        {titel:'Halve maan pre-check bij inladen',omschrijving:'2x halve maan na inladen. Pre-check toevoegen: controleer reel-aansnijding voor start.',prioriteit:'middel',winst_min:8},
+      ],
+      protocol:[
+        'Stap 1: Stop machine direct bij kwaliteitsdetectie, noteer tijdstip en positie.',
+        'Stap 2: Identificeer het defect: halve maan, hoekjes dubbel, scheefloop of scheuring.',
+        'Stap 3: Controleer instelling bokken, snijmessen en reel-positie.',
+        'Stap 4: Correctie uitvoeren en testrun van 5 vellen controleren.',
+        'Stap 5: Registreer event in PROMs met oorzaak en corrigerende maatregel.',
+      ],
+      events:[
+        {t:'11:15',dur_min:10,label:'Halve maan',oorzaak:'Reel aansnijding niet gecontroleerd'},
+        {t:'12:50',dur_min:8,label:'Hoekjes dubbel',oorzaak:'Bokken-instelling afwijking'},
+      ]},
+    sluis:{
+      analyse:'Rejectgate open 82 min (16.5% van shift). Formaatwisselingen veroorzaken de meeste sluistijd. Wegdraaien halve maan is terugkerend. NoSluisFactor 83.7% toont optimalisatiepotentieel bij formaatwisselprocedure.',
+      top_events:[
+        {label:'Sluis open',aantal:29,min:14},{label:'Formaat wissel opstarten bijbaan',aantal:4,min:9},
+        {label:'Formaat wissel',aantal:6,min:8},{label:'Na Alarm',aantal:3,min:7},{label:'Wegdraaien halve maan',aantal:2,min:4},
+      ],
+      verbeteringen:[
+        {titel:'Formaatwisselprocedure optimaliseren',omschrijving:'Bijbaan procedure bij formaatwisseling kost 9 min. Standaardiseer voorbereiding: materialen klaarzetten voor wissel.',prioriteit:'hoog',winst_min:5},
+        {titel:'Sluis parameters fine-tunen',omschrijving:'29x open bij normale productie. Parameters aanpassen voor GSM/snelheidscombinaties die nu vals alarmeren.',prioriteit:'middel',winst_min:3},
+      ]},
+    meta:{machine:'DW08',locatie:'Metsä NL Winschoten',shift_start:'07:00',shift_end:'15:30',totaal_events:25,ongepland_min:127,grootste_veroorzaker:'machine'},
+  },
+  parsed:{
+    oee:{ntRate:96.8,plRate:78.2,handlingRate:77.4,oeeHuidig:58.7,notScheduledMin:0,plannedDownMin:14,opDownMin:127,
+      stilstandCategories:[
+        {pad:'Machine > Slowbelt',aantal:5,duur_str:'0:12:00',duur_min:12,pct:9.4},
+        {pad:'Formaat wissel > Overige wisseling',aantal:6,duur_str:'0:21:00',duur_min:21,pct:16.5},
+        {pad:'Operator > Snelheidsbeperking 170gsm',aantal:3,duur_str:'0:15:00',duur_min:15,pct:11.8},
+        {pad:'Kwaliteit > Halve maan',aantal:2,duur_str:'0:10:00',duur_min:10,pct:7.9},
+        {pad:'Machine > Sensor 509',aantal:3,duur_str:'0:09:00',duur_min:9,pct:7.1},
+        {pad:'Machine > Alarm 1289',aantal:1,duur_str:'0:08:00',duur_min:8,pct:6.3},
+        {pad:'Kwaliteit > Hoekjes dubbel',aantal:2,duur_str:'0:08:00',duur_min:8,pct:6.3},
+        {pad:'Machine > Alarm 1281',aantal:1,duur_str:'0:05:00',duur_min:5,pct:3.9},
+        {pad:'Machine > Alarm 97',aantal:2,duur_str:'0:03:00',duur_min:3,pct:2.4},
+        {pad:'Operator > Alarm 97 leeg loop',aantal:2,duur_str:'0:03:00',duur_min:3,pct:2.4},
+      ]},
+    sluis:{runFactor:90.1,noSluisFactor:83.7,totalSluisDowntimeMin:82,
+      sluisEvents:[
+        {pad:'RejectGate > Sluis open',aantal:29,duur_min:14,pct:17},
+        {pad:'RejectGate > Formaat wissel opstarten bijbaan',aantal:4,duur_min:9,pct:11},
+        {pad:'RejectGate > Formaat wissel',aantal:6,duur_min:8,pct:10},
+        {pad:'RejectGate > Na Alarm',aantal:3,duur_min:7,pct:9},
+        {pad:'RejectGate > Wegdraaien halve maan',aantal:2,duur_min:4,pct:5},
+      ]},
+    sense:{totalPoints:1984,intervalSec:15,runningMinutes:420,standstillMinutes:76,avgRunningSpeed:248,maxSpeedSetting:348,maxSpeedSeen:336,
+      rejectGateOpenMinutes:82,rejectGatePct:16.5,cutMeters:118420,formatchgActiveMinutes:21,
+      speedDistribution:{'0':76,'1-100':8,'101-200':45,'201-280':155,'281-350':212},
+      alarmMinutes:[{code:509,min:9},{code:1289,min:8},{code:1281,min:5},{code:97,min:3},{code:32,min:2}]},
+    events:{totalEvents:25,totalDurMin:165,events:[
+      {nr:1,t:'07:15',dur_min:3,cat:'Machine > Slowbelt',comment:'Belt spanning',registrator:'Operator1'},
+      {nr:2,t:'07:35',dur_min:2,cat:'Machine > Slowbelt',comment:'',registrator:'Operator1'},
+      {nr:3,t:'08:10',dur_min:9,cat:'Formaat wisseling > 749→805mm',comment:'Bijbaan opstarten',registrator:'Operator2'},
+      {nr:4,t:'08:45',dur_min:3,cat:'Machine > Sensor 509',comment:'Offset drift bijgesteld',registrator:'Operator1'},
+      {nr:5,t:'09:20',dur_min:2,cat:'Operator > Alarm 97 leeg loop',comment:'Leeg loop',registrator:'Operator2'},
+      {nr:6,t:'09:55',dur_min:12,cat:'Formaat wisseling > 805→1020mm',comment:'Bijbaan storingen',registrator:'Operator2'},
+      {nr:7,t:'10:30',dur_min:3,cat:'Machine > Slowbelt',comment:'',registrator:'Operator2'},
+      {nr:8,t:'10:55',dur_min:10,cat:'Formaat wisseling > 1020→900mm',comment:'',registrator:'Operator1'},
+      {nr:9,t:'11:15',dur_min:10,cat:'Kwaliteit > Halve maan',comment:'2x halve maan gevonden',registrator:'Operator1'},
+      {nr:10,t:'11:45',dur_min:8,cat:'Machine > Alarm 1289',comment:'Rootcause onbekend',registrator:'Operator1'},
+      {nr:11,t:'12:10',dur_min:5,cat:'Formaat wisseling > 900→1000mm',comment:'',registrator:'Operator2'},
+      {nr:12,t:'12:20',dur_min:2,cat:'Machine > Slowbelt',comment:'',registrator:'Operator2'},
+      {nr:13,t:'12:50',dur_min:8,cat:'Kwaliteit > Hoekjes dubbel',comment:'Bokken-instelling afwijking',registrator:'Operator1'},
+      {nr:14,t:'12:55',dur_min:3,cat:'Machine > Sensor 509',comment:'',registrator:'Operator1'},
+      {nr:15,t:'13:20',dur_min:5,cat:'Formaat wisseling > 1000→730mm',comment:'',registrator:'Operator2'},
+      {nr:16,t:'13:30',dur_min:5,cat:'Machine > Alarm 1281',comment:'',registrator:'Operator2'},
+      {nr:17,t:'13:50',dur_min:5,cat:'Operator > Snelheidsbeperking 170gsm',comment:'',registrator:'Operator1'},
+      {nr:18,t:'14:05',dur_min:8,cat:'Formaat wisseling > 730→995mm',comment:'Lange wisseltijd',registrator:'Operator1'},
+      {nr:19,t:'14:10',dur_min:2,cat:'Machine > Slowbelt',comment:'',registrator:'Operator2'},
+      {nr:20,t:'14:20',dur_min:1,cat:'Operator > Alarm 97 leeg loop',comment:'',registrator:'Operator2'},
+      {nr:21,t:'14:30',dur_min:3,cat:'Operator > Snelheidsbeperking 170gsm',comment:'Engineering actie vereist',registrator:'Operator1'},
+      {nr:22,t:'14:40',dur_min:3,cat:'Machine > Sensor 509',comment:'',registrator:'Operator1'},
+      {nr:23,t:'14:50',dur_min:1,cat:'Machine > Alarm 97',comment:'Leeg loop',registrator:'Operator2'},
+      {nr:24,t:'15:00',dur_min:2,cat:'Machine > Slowbelt',comment:'',registrator:'Operator2'},
+      {nr:25,t:'15:10',dur_min:5,cat:'Operator > Snelheidsbeperking 170gsm',comment:'',registrator:'Operator1'},
+    ]},
+    loadlist:{totalMT:41.3,totalNetProdM:118420,avgTonH:4.7,avgGsm:262,avgWidthMm:885,
+      orders:[..._dRan,..._dExtra]},
+  },
+  orderPot:{shiftDate:'08/04/26',gedraaid:_dRan,nietGedraaid:_dExtra,extraMin:127,extraOrders:_dExtra,extraUsedMin:127,extraMT:8.2,extraM:35602},
+};
+
+function startDemo(){
+  STATE.calc=DEMO_DATA.calc;
+  STATE.pot=DEMO_DATA.pot;
+  STATE.ai=DEMO_DATA.ai;
+  STATE.orderPot=DEMO_DATA.orderPot;
+  STATE.parsed=DEMO_DATA.parsed;
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('demo-badge').style.display='inline';
+  document.getElementById('demo-banner').style.display='block';
+  switchTab(0);
 }
 
 // ══ TAB NAV ══
