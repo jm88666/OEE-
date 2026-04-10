@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3131;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/analyze', async (req, res) => {
@@ -33,15 +33,58 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
+app.post('/api/extract-image', async (req, res) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey === 'plak-hier-je-sleutel') {
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld.' });
+  }
+  const { imageBase64, mimeType } = req.body;
+  if (!imageBase64 || !mimeType) return res.status(400).json({ error: 'Geen afbeelding meegegeven.' });
+
+  try {
+    const client = new Anthropic({ apiKey });
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: mimeType, data: imageBase64 }
+          },
+          {
+            type: 'text',
+            text: `Extraheer alle getallen uit dit PROMs OEE Detail Rapport.
+Retourneer ALLEEN dit JSON zonder markdown of uitleg:
+{
+  "oee": 0, "nt_rate": 0, "pl_rate": 0,
+  "handling_rate": 0, "speed_factor": 0,
+  "not_scheduled_min": 0, "planned_min": 0,
+  "op_down_min": 0, "run_factor": 0,
+  "no_sluis_factor": 0, "norun_min": 0,
+  "sluis_min": 0,
+  "stilstand": [
+    {"cat":"", "omschrijving":"", "aantal":0, "duur_min":0, "pct":0}
+  ]
+}`
+          }
+        ]
+      }]
+    });
+    const text = message.content.find(c => c.type === 'text')?.text || '';
+    res.json({ text });
+  } catch (err) {
+    console.error('Vision API fout:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/auth-check', (req, res) => {
   const { user, pass } = req.query;
   const validUser = user === 'metsa';
   const validPass = pass === process.env.LOGIN_PASSWORD;
-  if (validUser && validPass) {
-    res.json({ ok: true });
-  } else {
-    res.json({ ok: false });
-  }
+  res.json({ ok: validUser && validPass });
 });
 
-app.listen(PORT, () => console.log(`OEE Analyse v2 draait op http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`OEE Analyse v3 draait op http://localhost:${PORT}`));
