@@ -7,7 +7,7 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3131;
-const runtimeEnv = (...parts) => process.env[parts.join('_')];
+const AUTH_SECRET_ENV = 'OEE_AUTH_SECRET';
 
 app.use(express.json({ limit: '20mb' }));
 
@@ -94,9 +94,9 @@ Retourneer ALLEEN dit JSON zonder markdown of uitleg:
 
 app.get('/api/auth-check', (req, res) => {
   const { user, pass } = req.query;
-  const loginPassword = runtimeEnv('LOGIN', 'PASSWORD');
+  const authSecret = process.env[AUTH_SECRET_ENV];
   const validUser = user === 'metsa';
-  const validPass = Boolean(loginPassword) && pass === loginPassword;
+  const validPass = Boolean(authSecret) && pass === authSecret;
   res.json({ ok: validUser && validPass });
 });
 
