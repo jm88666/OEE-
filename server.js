@@ -7,9 +7,22 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3131;
-const AUTH_ENV_NAMES = ['JM_ANALYZE_TOOL', 'JM_ANALYZE_TOOL_PASSWORD', 'JMANALYZETOOL', 'JMAnalyzeTool', 'OEE_AUTH_SECRET', 'LOGIN_PASSWORD'];
+const AUTH_ENV_NAMES = [
+  'LOGIN_PASSWORD',
+  'LOGIN_WACHTWOORD',
+  'LOGINWACHTWOORD',
+  'PASSWORD',
+  'WACHTWOORD',
+  'JM_ANALYZE_TOOL',
+  'JM_ANALYZE_TOOL_PASSWORD',
+  'JMANALYZETOOL',
+  'JMAnalyzeTool',
+  'JM_PASSWORD',
+  'JM_TOOL_PASSWORD',
+  'OEE_AUTH_SECRET',
+];
 
-const getAuthSecret = () => AUTH_ENV_NAMES.map(name => process.env[name]).find(Boolean);
+const getAuthSecrets = () => [...new Set(AUTH_ENV_NAMES.map(name => process.env[name]).filter(Boolean))];
 const sendFile = (res, next, fileName) => {
   res.sendFile(path.join(__dirname, 'public', fileName), err => { if (err) next(err); });
 };
@@ -104,13 +117,11 @@ Retourneer ALLEEN dit JSON zonder markdown of uitleg:
 });
 
 app.get('/api/auth-check', (req, res) => {
-  const { user, pass } = req.query;
-  const authSecret = getAuthSecret();
-  const normalizedUser = String(user || '').trim().toLowerCase();
-  const validUsers = new Set(['jmanalyzetool', 'jm', 'jm88666', 'metsa']);
-  const validUser = validUsers.has(normalizedUser);
-  const validPass = Boolean(authSecret) && pass === authSecret;
-  res.json({ ok: validUser && validPass });
+  const { pass } = req.query;
+  const authSecrets = getAuthSecrets();
+  const submittedPass = String(pass || '');
+  const validPass = authSecrets.some(secret => submittedPass === secret);
+  res.json({ ok: validPass, configured: authSecrets.length > 0 });
 });
 
 app.listen(PORT, () => console.log(`JMAnalyzeTool draait op http://localhost:${PORT}`));
