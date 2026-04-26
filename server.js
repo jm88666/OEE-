@@ -3,7 +3,6 @@ require('dotenv').config();
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3131;
@@ -41,20 +40,8 @@ const sendFile = (res, next, fileName) => {
 
 app.use(express.json({ limit: '20mb' }));
 
+app.get(['/', '/index.html'], (req, res, next) => sendFile(res, next, 'login.html'));
 app.get(['/report', '/reports', '/jm-report', '/basic-report', '/complete-report'], (req, res, next) => sendFile(res, next, 'jm-report.html'));
-
-app.get(['/', '/index.html'], (req, res, next) => {
-  const indexPath = path.join(__dirname, 'public', 'index.html');
-  fs.readFile(indexPath, 'utf8', (err, html) => {
-    if (err) return next(err);
-    const patchTags = [
-      '<script src="/oee-fixes.js"></script>',
-      '<script src="/jm-branding.js"></script>',
-    ];
-    const page = patchTags.reduce((body, tag) => body.includes(tag) ? body : body.replace('</body>', `${tag}\n</body>`), html);
-    res.type('html').send(page);
-  });
-});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -71,7 +58,7 @@ app.post('/api/analyze', async (req, res) => {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 8000,
-      system: 'Je bent expert productie-analist voor industriële snijmachines. Retourneer UITSLUITEND valide JSON zonder markdown.',
+      system: 'Je bent expert productie-analist voor industriele snijmachines. Retourneer UITSLUITEND valide JSON zonder markdown.',
       messages: [{ role: 'user', content: prompt }]
     });
     res.json({ text: message.content[0].text });
