@@ -7,7 +7,7 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3131;
-const AUTH_ENV_NAMES = ['JM_ANALYZE_TOOL_PASSWORD', 'JMAnalyzeTool', 'OEE_AUTH_SECRET', 'LOGIN_PASSWORD'];
+const AUTH_ENV_NAMES = ['JM_ANALYZE_TOOL', 'JM_ANALYZE_TOOL_PASSWORD', 'JMANALYZETOOL', 'JMAnalyzeTool', 'OEE_AUTH_SECRET', 'LOGIN_PASSWORD'];
 
 const getAuthSecret = () => AUTH_ENV_NAMES.map(name => process.env[name]).find(Boolean);
 
