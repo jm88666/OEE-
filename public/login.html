@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JMAnalyzeTool</title>
+<style>
+:root{--bg:#f8f7f5;--card:#fff;--border:#e5e3df;--text:#1a1a1a;--muted:#6b7280;--blue:#2563eb;--red:#dc2626;--radius:12px}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:24px}.login-card{width:min(100%,360px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:30px 32px;box-shadow:0 12px 30px rgba(15,23,42,.06)}h1{margin:0 0 4px;color:var(--blue);font-size:28px;line-height:1.1}p{margin:0 0 24px;color:var(--muted);font-size:14px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}label{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;background:#fbfaf9;color:var(--text);font-size:15px;outline:none}input:focus{border-color:var(--blue)}button{width:100%;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:800;font-size:15px;padding:12px 14px;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.err{min-height:20px;margin:0 0 8px;color:var(--red);font-size:13px}.hint{margin-top:14px;font-size:12px;color:var(--muted);text-align:center}@media(prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--border:#374151;--text:#f9fafb;--muted:#9ca3af}input{background:#111827}}
+</style>
+</head>
+<body>
+  <main class="login-card">
+    <h1>JMAnalyzeTool</h1>
+    <p>Inloggen vereist voor de analyseomgeving</p>
+    <div class="field">
+      <label for="user">Gebruikersnaam</label>
+      <input id="user" autocomplete="username" value="JMAnalyzeTool">
+    </div>
+    <div class="field">
+      <label for="pass">Wachtwoord</label>
+      <input id="pass" type="password" autocomplete="current-password">
+    </div>
+    <div id="err" class="err"></div>
+    <button id="login">Inloggen</button>
+    <div class="hint">Na inloggen opent automatisch de nieuwe report builder.</div>
+  </main>
+<script>
+const pass = document.getElementById('pass');
+const err = document.getElementById('err');
+const btn = document.getElementById('login');
+async function doLogin(){
+  err.textContent='';
+  btn.disabled=true;
+  try{
+    const res=await fetch('/api/auth-check?pass='+encodeURIComponent(pass.value));
+    const data=await res.json();
+    if(data.ok){
+      sessionStorage.setItem('jm-auth','ok');
+      window.location.href='/report';
+      return;
+    }
+    err.textContent=data.configured?'Gebruikersnaam of wachtwoord onjuist.':'Login-wachtwoord is nog niet ingesteld.';
+  }catch(e){
+    err.textContent='Login controleren lukt niet. Probeer opnieuw.';
+  }finally{
+    btn.disabled=false;
+  }
+}
+btn.addEventListener('click',doLogin);
+pass.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+pass.focus();
+</script>
+</body>
+</html>
