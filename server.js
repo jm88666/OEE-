@@ -7,7 +7,9 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3131;
-const AUTH_SECRET_ENV = 'OEE_AUTH_SECRET';
+const AUTH_ENV_NAMES = ['JM_ANALYZE_TOOL_PASSWORD', 'JMAnalyzeTool', 'OEE_AUTH_SECRET', 'LOGIN_PASSWORD'];
+
+const getAuthSecret = () => AUTH_ENV_NAMES.map(name => process.env[name]).find(Boolean);
 
 app.use(express.json({ limit: '20mb' }));
 
@@ -35,7 +37,7 @@ app.post('/api/analyze', async (req, res) => {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 8000,
-      system: 'Je bent expert productie-analist voor industriële snijmachines bij Metsä NL Winschoten. Retourneer UITSLUITEND valide JSON zonder markdown.',
+      system: 'Je bent expert productie-analist voor industriële snijmachines. Retourneer UITSLUITEND valide JSON zonder markdown.',
       messages: [{ role: 'user', content: prompt }]
     });
     res.json({ text: message.content[0].text });
@@ -94,10 +96,12 @@ Retourneer ALLEEN dit JSON zonder markdown of uitleg:
 
 app.get('/api/auth-check', (req, res) => {
   const { user, pass } = req.query;
-  const authSecret = process.env[AUTH_SECRET_ENV];
-  const validUser = user === 'metsa';
+  const authSecret = getAuthSecret();
+  const normalizedUser = String(user || '').trim().toLowerCase();
+  const validUsers = new Set(['jmanalyzetool', 'jm', 'jm88666', 'metsa']);
+  const validUser = validUsers.has(normalizedUser);
   const validPass = Boolean(authSecret) && pass === authSecret;
   res.json({ ok: validUser && validPass });
 });
 
-app.listen(PORT, () => console.log(`OEE Analyse v3 draait op http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`JMAnalyzeTool draait op http://localhost:${PORT}`));
