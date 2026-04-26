@@ -3,11 +3,22 @@ require('dotenv').config();
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3131;
 
 app.use(express.json({ limit: '20mb' }));
+
+app.get(['/', '/index.html'], (req, res, next) => {
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  fs.readFile(indexPath, 'utf8', (err, html) => {
+    if (err) return next(err);
+    const patchTag = '<script src="/oee-fixes.js"></script>';
+    res.type('html').send(html.includes(patchTag) ? html : html.replace('</body>', `${patchTag}\n</body>`));
+  });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/analyze', async (req, res) => {
