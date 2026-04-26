@@ -22,7 +22,19 @@ const AUTH_ENV_NAMES = [
   'OEE_AUTH_SECRET',
 ];
 
-const getAuthSecrets = () => [...new Set(AUTH_ENV_NAMES.map(name => process.env[name]).filter(Boolean))];
+const normalizeEnvName = name => String(name || '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+const AUTH_ENV_KEYS = new Set(AUTH_ENV_NAMES.map(normalizeEnvName));
+const looksLikeAuthEnv = name => {
+  const key = normalizeEnvName(name);
+  return AUTH_ENV_KEYS.has(key)
+    || (key.includes('LOGIN') && (key.includes('PASSWORD') || key.includes('WACHTWOORD')))
+    || (key.includes('JM') && key.includes('ANALYZE'))
+    || key === 'PASSWORD'
+    || key === 'WACHTWOORD';
+};
+const getAuthSecrets = () => [...new Set(Object.entries(process.env)
+  .filter(([name, value]) => value && looksLikeAuthEnv(name))
+  .map(([, value]) => String(value)))];
 const sendFile = (res, next, fileName) => {
   res.sendFile(path.join(__dirname, 'public', fileName), err => { if (err) next(err); });
 };
