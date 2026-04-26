@@ -41,7 +41,7 @@ const sendFile = (res, next, fileName) => {
 
 app.use(express.json({ limit: '20mb' }));
 
-app.get(['/report', '/jm-report'], (req, res, next) => sendFile(res, next, 'jm-report.html'));
+app.get(['/report', '/reports', '/jm-report', '/basic-report', '/complete-report'], (req, res, next) => sendFile(res, next, 'jm-report.html'));
 
 app.get(['/', '/index.html'], (req, res, next) => {
   const indexPath = path.join(__dirname, 'public', 'index.html');
