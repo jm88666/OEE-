@@ -12,7 +12,7 @@
   ];
 
   function replaceText(value) {
-    return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
+    return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), String(value || ''));
   }
 
   function applyBranding() {
@@ -33,6 +33,13 @@
       const next = replaceText(el.getAttribute('title'));
       if (next !== el.getAttribute('title')) el.setAttribute('title', next);
     });
+  }
+
+  const originalBuildPrompt = window.buildPrompt;
+  if (typeof originalBuildPrompt === 'function') {
+    window.buildPrompt = function brandedBuildPrompt(...args) {
+      return replaceText(originalBuildPrompt.apply(this, args));
+    };
   }
 
   const originalSwitchTab = window.switchTab;
