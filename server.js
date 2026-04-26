@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3131;
@@ -37,11 +38,20 @@ const getAuthSecrets = () => [...new Set(Object.entries(process.env)
 const sendFile = (res, next, fileName) => {
   res.sendFile(path.join(__dirname, 'public', fileName), err => { if (err) next(err); });
 };
+const sendReportBuilder = (res, next) => {
+  const reportPath = path.join(__dirname, 'public', 'jm-report.html');
+  fs.readFile(reportPath, 'utf8', (err, html) => {
+    if (err) return next(err);
+    const tag = '<script src="/demo-scenarios.js"></script>';
+    const page = html.includes(tag) ? html : html.replace('</body>', `${tag}\n</body>`);
+    res.type('html').send(page);
+  });
+};
 
 app.use(express.json({ limit: '20mb' }));
 
 app.get(['/', '/index.html'], (req, res, next) => sendFile(res, next, 'login.html'));
-app.get(['/report', '/reports', '/jm-report', '/basic-report', '/complete-report'], (req, res, next) => sendFile(res, next, 'jm-report.html'));
+app.get(['/report', '/reports', '/jm-report', '/basic-report', '/complete-report'], (req, res, next) => sendReportBuilder(res, next));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
