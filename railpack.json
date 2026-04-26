@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "node",
+  "secrets": [],
+  "steps": {
+    "install": {
+      "commands": ["npm install"],
+      "secrets": []
+    }
+  },
+  "deploy": {
+    "startCommand": "npm run start"
+  }
+}
