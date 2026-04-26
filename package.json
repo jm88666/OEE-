@@ -1,7 +1,7 @@
 {
-  "name": "oee-analyse",
+  "name": "jmanalyzetool",
   "version": "2.0.0",
-  "description": "OEE Analyse voor DW08 - Metsä NL Winschoten",
+  "description": "JMAnalyzeTool productie-analyse dashboard",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
