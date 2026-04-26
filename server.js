@@ -17,8 +17,12 @@ app.get(['/', '/index.html'], (req, res, next) => {
   const indexPath = path.join(__dirname, 'public', 'index.html');
   fs.readFile(indexPath, 'utf8', (err, html) => {
     if (err) return next(err);
-    const patchTag = '<script src="/oee-fixes.js"></script>';
-    res.type('html').send(html.includes(patchTag) ? html : html.replace('</body>', `${patchTag}\n</body>`));
+    const patchTags = [
+      '<script src="/oee-fixes.js"></script>',
+      '<script src="/jm-branding.js"></script>',
+    ];
+    const page = patchTags.reduce((body, tag) => body.includes(tag) ? body : body.replace('</body>', `${tag}\n</body>`), html);
+    res.type('html').send(page);
   });
 });
 
