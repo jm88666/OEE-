@@ -10,8 +10,13 @@ const PORT = process.env.PORT || 3131;
 const AUTH_ENV_NAMES = ['JM_ANALYZE_TOOL', 'JM_ANALYZE_TOOL_PASSWORD', 'JMANALYZETOOL', 'JMAnalyzeTool', 'OEE_AUTH_SECRET', 'LOGIN_PASSWORD'];
 
 const getAuthSecret = () => AUTH_ENV_NAMES.map(name => process.env[name]).find(Boolean);
+const sendFile = (res, next, fileName) => {
+  res.sendFile(path.join(__dirname, 'public', fileName), err => { if (err) next(err); });
+};
 
 app.use(express.json({ limit: '20mb' }));
+
+app.get(['/report', '/jm-report'], (req, res, next) => sendFile(res, next, 'jm-report.html'));
 
 app.get(['/', '/index.html'], (req, res, next) => {
   const indexPath = path.join(__dirname, 'public', 'index.html');
