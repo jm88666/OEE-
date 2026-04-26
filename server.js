@@ -7,6 +7,7 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3131;
+const runtimeEnv = (...parts) => process.env[parts.join('_')];
 
 app.use(express.json({ limit: '20mb' }));
 
@@ -93,8 +94,9 @@ Retourneer ALLEEN dit JSON zonder markdown of uitleg:
 
 app.get('/api/auth-check', (req, res) => {
   const { user, pass } = req.query;
+  const loginPassword = runtimeEnv('LOGIN', 'PASSWORD');
   const validUser = user === 'metsa';
-  const validPass = pass === process.env.LOGIN_PASSWORD;
+  const validPass = Boolean(loginPassword) && pass === loginPassword;
   res.json({ ok: validUser && validPass });
 });
 
