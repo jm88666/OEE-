@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -69,33 +69,33 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       </svg>
     </div>
     <div class="syne logo-text">JM<span style="color:var(--g)">Analyze</span>Tool</div>
-    <div class="logo-sub">Productie-analyse · Beveiligde accounts</div>
+    <div class="logo-sub">Production analysis · Secure accounts</div>
 
     <div class="card">
       <div class="tabs">
-        <button class="tab active" id="tab-login">Inloggen</button>
-        <button class="tab" id="tab-register">Account maken</button>
+        <button class="tab active" id="tab-login">Log in</button>
+        <button class="tab" id="tab-register">Create account</button>
       </div>
 
       <section id="login-form">
-        <div class="field"><label for="login-email">E-mail</label><input id="login-email" type="email" autocomplete="username" placeholder="naam@bedrijf.nl"></div>
-        <div class="field"><label for="login-pass">Wachtwoord</label><input id="login-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+        <div class="field"><label for="login-email">Email</label><input id="login-email" type="email" autocomplete="username" placeholder="name@company.com"></div>
+        <div class="field"><label for="login-pass">Password</label><input id="login-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
         <div id="login-msg" class="msg err"></div>
-        <button class="btn-primary" id="login-btn">Inloggen →</button>
+        <button class="btn-primary" id="login-btn">Log in →</button>
       </section>
 
       <section id="register-form" class="hidden">
-        <div class="field"><label for="reg-name">Naam</label><input id="reg-name" autocomplete="name" placeholder="Jan Modaal"></div>
-        <div class="field"><label for="reg-email">E-mail</label><input id="reg-email" type="email" autocomplete="username" placeholder="naam@bedrijf.nl"></div>
-        <div class="field"><label for="reg-location">Vestiging / team</label><input id="reg-location" placeholder="Bijv. Winschoten, Excellent team"></div>
-        <div class="field"><label for="reg-pass">Wachtwoord</label><input id="reg-pass" type="password" autocomplete="new-password" placeholder="Minimaal 8 tekens"></div>
-        <div class="field"><label for="reg-code">Unieke accountcode</label><input id="reg-code" autocomplete="off" placeholder="••••••"></div>
+        <div class="field"><label for="reg-name">Name</label><input id="reg-name" autocomplete="name" placeholder="John Smith"></div>
+        <div class="field"><label for="reg-email">Email</label><input id="reg-email" type="email" autocomplete="username" placeholder="name@company.com"></div>
+        <div class="field"><label for="reg-location">Site / team</label><input id="reg-location" placeholder="e.g. Winschoten, Excellent team"></div>
+        <div class="field"><label for="reg-pass">Password</label><input id="reg-pass" type="password" autocomplete="new-password" placeholder="Minimum 8 characters"></div>
+        <div class="field"><label for="reg-code">Unique account code</label><input id="reg-code" autocomplete="off" placeholder="••••••"></div>
         <div id="reg-msg" class="msg err"></div>
-        <button class="btn-primary" id="register-btn">Account aanmaken →</button>
+        <button class="btn-primary" id="register-btn">Create account →</button>
       </section>
     </div>
 
-    <div class="hint">Accounts kunnen alleen worden aangemaakt met jouw unieke code.</div>
+    <div class="hint">Accounts can only be created with your unique code.</div>
   </div>
 </main>
 
@@ -114,7 +114,7 @@ function show(mode) {
 async function api(url, body) {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Actie mislukt.');
+  if (!res.ok) throw new Error(data.error || 'Action failed.');
   return data;
 }
 
@@ -139,7 +139,7 @@ async function register() {
   try {
     await api('/api/auth/register', { name: $('reg-name').value, email: $('reg-email').value, location: $('reg-location').value, password: $('reg-pass').value, inviteCode: $('reg-code').value });
     $('reg-msg').className = 'msg ok';
-    $('reg-msg').textContent = 'Account gemaakt. Je kunt nu inloggen.';
+    $('reg-msg').textContent = 'Account created. You can now log in.';
     $('login-email').value = $('reg-email').value;
     $('login-pass').value = $('reg-pass').value;
     setTimeout(() => show('login'), 600);

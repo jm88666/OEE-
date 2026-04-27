@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mijn rapporten - JMAnalyzeTool</title>
+<title>My reports - JMAnalyzeTool</title>
 <script src="/auth-client.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,9 +79,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <span class="syne">JM<span style="color:var(--g)">Analyze</span>Tool</span>
   </div>
   <nav class="nav-links">
-    <a href="/report" class="nav-btn">Nieuw rapport</a>
-    <a id="admin-link" href="/admin" class="nav-btn" style="display:none">Beheer</a>
-    <button id="logout" class="nav-btn danger">Uitloggen</button>
+    <a href="/report" class="nav-btn">New report</a>
+    <a id="admin-link" href="/admin" class="nav-btn" style="display:none">Admin</a>
+    <button id="logout" class="nav-btn danger">Log out</button>
   </nav>
   <div class="nav-right">
     <div class="avatar" id="avatar">JM</div>
@@ -92,16 +92,16 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 <main class="wrap">
   <div class="page-header">
     <div>
-      <div class="syne page-title">Mijn rapporten</div>
-      <div class="page-sub" id="sub">Laden…</div>
+      <div class="syne page-title">My reports</div>
+      <div class="page-sub" id="sub">Loading…</div>
     </div>
-    <button class="btn-glow" onclick="window.location.href='/report'">+ Nieuw rapport</button>
+    <button class="btn-glow" onclick="window.location.href='/report'">+ New report</button>
   </div>
 
   <div class="grid">
     <section id="list"></section>
     <section class="viewer">
-      <div id="viewer" class="viewer-empty">Kies een rapport om de inhoud te bekijken.</div>
+      <div id="viewer" class="viewer-empty">Select a report to view its contents.</div>
     </section>
   </div>
 </main>
@@ -129,10 +129,10 @@ function badgeHtml(text, color) {
 async function loadReports() {
   const res = await fetch('/api/reports');
   const data = await res.json();
-  document.getElementById('sub').textContent = `Bewaartermijn: ${data.retentionDays} dagen · ${data.reports.length} rapporten`;
+  document.getElementById('sub').textContent = `Retention: ${data.retentionDays} days · ${data.reports.length} reports`;
 
   if (!data.reports.length) {
-    list.innerHTML = `<div class="report-item" style="cursor:default;opacity:.6">Nog geen rapporten opgeslagen.</div>`;
+    list.innerHTML = `<div class="report-item" style="cursor:default;opacity:.6">No reports saved yet.</div>`;
     return;
   }
 
@@ -145,7 +145,7 @@ async function loadReports() {
         <span>${esc(r.shift || '-')}</span>
         ${r.route ? badgeHtml(r.route, r.route === 'Complete' ? '#60a5fa' : '#4a5070') : ''}
       </div>
-      <div class="report-date">${new Date(r.createdAt).toLocaleString('nl-NL')} · verloopt ${new Date(r.expiresAt).toLocaleDateString('nl-NL')}</div>
+      <div class="report-date">${new Date(r.createdAt).toLocaleString('en-GB')} · expires ${new Date(r.expiresAt).toLocaleDateString('en-GB')}</div>
     </article>
   `).join('');
 
@@ -159,27 +159,27 @@ async function loadReports() {
 }
 
 async function openReport(id) {
-  viewer.innerHTML = `<div class="viewer-empty">Laden…</div>`;
+  viewer.innerHTML = `<div class="viewer-empty">Loading…</div>`;
   const res = await fetch('/api/reports/' + encodeURIComponent(id));
   const data = await res.json();
-  if (!res.ok) { viewer.innerHTML = `<div class="viewer-empty" style="color:var(--red)">${esc(data.error || 'Rapport openen mislukt.')}</div>`; return; }
+  if (!res.ok) { viewer.innerHTML = `<div class="viewer-empty" style="color:var(--red)">${esc(data.error || 'Failed to open report.')}</div>`; return; }
   current = data.report;
   viewer.innerHTML = `
     <div class="viewer-header">
       <div>
         <div class="viewer-title">${esc(current.title)}</div>
-        <div class="viewer-sub">${esc(current.email)} · ${new Date(current.createdAt).toLocaleString('nl-NL')}</div>
+        <div class="viewer-sub">${esc(current.email)} · ${new Date(current.createdAt).toLocaleString('en-GB')}</div>
       </div>
-      <button onclick="deleteCurrent()" style="background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.3);border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700">Verwijderen</button>
+      <button onclick="deleteCurrent()" style="background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.3);border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700">Delete</button>
     </div>
     <div style="background:rgba(255,255,255,.02);border-radius:10px;overflow:auto;min-height:280px">${current.html}</div>
   `;
 }
 
 async function deleteCurrent() {
-  if (!current || !confirm('Rapport verwijderen?')) return;
+  if (!current || !confirm('Delete report?')) return;
   const res = await fetch('/api/reports/' + encodeURIComponent(current.id), { method: 'DELETE' });
-  if (res.ok) { current = null; viewer.innerHTML = '<div class="viewer-empty">Rapport verwijderd.</div>'; loadReports(); }
+  if (res.ok) { current = null; viewer.innerHTML = '<div class="viewer-empty">Report deleted.</div>'; loadReports(); }
 }
 
 function esc(v) {

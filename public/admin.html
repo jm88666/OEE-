@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Beheer - JMAnalyzeTool</title>
+<title>Admin - JMAnalyzeTool</title>
 <script src="/auth-client.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -78,9 +78,9 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <span class="syne">JM<span style="color:var(--g)">Analyze</span>Tool</span>
   </div>
   <nav class="nav-links">
-    <a href="/report" class="nav-btn">Nieuw rapport</a>
-    <a href="/my-reports" class="nav-btn">Mijn rapporten</a>
-    <button id="logout" class="nav-btn danger">Uitloggen</button>
+    <a href="/report" class="nav-btn">New report</a>
+    <a href="/my-reports" class="nav-btn">My reports</a>
+    <button id="logout" class="nav-btn danger">Log out</button>
   </nav>
   <div style="display:flex;align-items:center;gap:10px">
     <div class="avatar" id="avatar">JM</div>
@@ -90,19 +90,19 @@ tr:hover td{background:rgba(255,255,255,.01)}
 
 <main class="wrap">
   <div class="page-header">
-    <div class="syne page-title">Beheer</div>
-    <div class="page-sub">Accounts, rapporten en gebruikskosten bewaken</div>
+    <div class="syne page-title">Admin</div>
+    <div class="page-sub">Monitor accounts, reports and usage costs</div>
   </div>
 
   <div class="stats" id="cards"></div>
 
   <div class="tab-row">
-    <button class="tab-btn active" data-tab="reports">Rapporten</button>
-    <button class="tab-btn" data-tab="users">Gebruikers</button>
+    <button class="tab-btn active" data-tab="reports">Reports</button>
+    <button class="tab-btn" data-tab="users">Users</button>
     <button class="tab-btn" data-tab="audit">Audit log</button>
   </div>
 
-  <div class="table-card" id="content">Laden…</div>
+  <div class="table-card" id="content">Loading…</div>
 </main>
 
 <script>
@@ -116,7 +116,7 @@ document.addEventListener('jm:user', async e => {
   document.getElementById('avatar').textContent = initials;
   document.getElementById('user-email').textContent = state.me.email;
   if (state.me.role !== 'admin') {
-    document.getElementById('content').innerHTML = '<div style="color:var(--red);padding:20px">Geen beheerrechten.</div>';
+    document.getElementById('content').innerHTML = '<div style="color:var(--red);padding:20px">No admin permissions.</div>';
     return;
   }
   await loadAll();
@@ -133,7 +133,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 async function get(url) {
   const res = await fetch(url);
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Laden mislukt.');
+  if (!res.ok) throw new Error(data.error || 'Failed to load.');
   return data;
 }
 
@@ -149,10 +149,10 @@ async function loadAll() {
 function renderCards(days) {
   const ai = state.audit.filter(a => a.type === 'ai_report_generated').length;
   document.getElementById('cards').innerHTML = [
-    { k: 'Gebruikers', v: state.users.length, c: 'var(--blue)' },
-    { k: 'Rapporten', v: state.reports.length, c: 'var(--g)' },
+    { k: 'Users', v: state.users.length, c: 'var(--blue)' },
+    { k: 'Reports', v: state.reports.length, c: 'var(--g)' },
     { k: 'AI calls', v: ai, c: 'var(--purple)' },
-    { k: 'Bewaartermijn', v: days + 'd', c: 'var(--amber)' },
+    { k: 'Retention', v: days + 'd', c: 'var(--amber)' },
   ].map(s => `
     <div class="stat-card" style="box-shadow:inset 0 0 40px ${s.c}08">
       <div style="position:absolute;top:0;right:0;width:50px;height:50px;background:radial-gradient(circle at 100% 0%,${s.c}20,transparent 70%)"></div>
@@ -171,7 +171,7 @@ function render(tab) {
 function reportsTable() {
   document.getElementById('content').innerHTML = `<table>
     <thead><tr>
-      <th>Tijd</th><th>Titel</th><th>Gebruiker</th><th>Vestiging</th><th>Route</th><th>Verloopt</th>
+      <th>Time</th><th>Title</th><th>User</th><th>Site</th><th>Route</th><th>Expires</th>
     </tr></thead>
     <tbody>${state.reports.map(r => `<tr>
       <td class="mono" style="font-size:12px;color:var(--muted)">${date(r.createdAt)}</td>
@@ -179,7 +179,7 @@ function reportsTable() {
       <td class="mono" style="font-size:12px;color:var(--muted)">${esc(r.email)}</td>
       <td style="color:var(--muted)">${esc(r.location || '-')}</td>
       <td>${badge(r.route, r.route === 'Complete' ? 'var(--blue)' : 'var(--muted)')}</td>
-      <td style="color:var(--muted);font-size:12px">${new Date(r.expiresAt).toLocaleDateString('nl-NL')}</td>
+      <td style="color:var(--muted);font-size:12px">${new Date(r.expiresAt).toLocaleDateString('en-GB')}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -187,18 +187,18 @@ function reportsTable() {
 function usersTable() {
   document.getElementById('content').innerHTML = `<table>
     <thead><tr>
-      <th>Naam</th><th>E-mail</th><th>Vestiging</th><th>Rol</th><th>Status</th><th>Aangemaakt</th><th>Actie</th>
+      <th>Name</th><th>Email</th><th>Site</th><th>Role</th><th>Status</th><th>Created</th><th>Action</th>
     </tr></thead>
     <tbody>${state.users.map(u => `<tr>
       <td style="font-weight:600">${esc(u.name)}</td>
       <td class="mono" style="font-size:12px;color:var(--muted)">${esc(u.email)}</td>
       <td style="color:var(--muted)">${esc(u.location || '-')}</td>
       <td>${badge(u.role, u.role === 'admin' ? 'var(--purple)' : 'var(--blue)')}</td>
-      <td>${badge(u.active === false ? 'Geblokkeerd' : 'Actief', u.active === false ? 'var(--red)' : 'var(--g)')}</td>
+      <td>${badge(u.active === false ? 'Blocked' : 'Active', u.active === false ? 'var(--red)' : 'var(--g)')}</td>
       <td style="color:var(--muted);font-size:12px">${date(u.createdAt)}</td>
       <td><button class="small-btn" onclick="toggleUser('${u.id}',${u.active !== false})"
         style="background:${u.active !== false ? 'rgba(255,71,87,.12)' : 'rgba(0,229,160,.12)'};color:${u.active !== false ? 'var(--red)' : 'var(--g)'};border-color:${u.active !== false ? 'rgba(255,71,87,.3)' : 'rgba(0,229,160,.3)'}">
-        ${u.active !== false ? 'Blokkeer' : 'Activeer'}
+        ${u.active !== false ? 'Block' : 'Activate'}
       </button></td>
     </tr>`).join('')}</tbody>
   </table>`;
@@ -206,7 +206,7 @@ function usersTable() {
 
 function auditTable() {
   document.getElementById('content').innerHTML = `<table>
-    <thead><tr><th>Tijd</th><th>Actie</th><th>Gebruiker</th><th>Details</th></tr></thead>
+    <thead><tr><th>Time</th><th>Action</th><th>User</th><th>Details</th></tr></thead>
     <tbody>${state.audit.map(a => `<tr>
       <td class="mono" style="font-size:12px;color:var(--muted)">${date(a.at)}</td>
       <td>${badge(a.type, a.type.includes('ai') ? 'var(--purple)' : a.type.includes('login') ? 'var(--blue)' : 'var(--g)')}</td>
@@ -228,7 +228,7 @@ async function toggleUser(id, active) {
 function badge(text, color) {
   return `<span class="badge" style="background:${color}18;border:1px solid ${color}40;color:${color}">${esc(text)}</span>`;
 }
-function date(v) { return new Date(v).toLocaleString('nl-NL'); }
+function date(v) { return new Date(v).toLocaleString('en-GB'); }
 function esc(v) { return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 </script>
 </body>
