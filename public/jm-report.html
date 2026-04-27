@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -170,9 +170,9 @@ tr:last-child td{border-bottom:none}
     <span class="syne">JM<span style="color:var(--g)">Analyze</span>Tool</span>
   </div>
   <nav class="nav-links">
-    <a href="/my-reports" class="nav-btn">My reports</a>
-    <a id="admin-link" href="/admin" class="nav-btn" style="display:none">Admin</a>
-    <button id="logout-btn" class="nav-btn danger">Log out</button>
+    <a href="/my-reports" class="nav-btn">Mijn rapporten</a>
+    <a id="admin-link" href="/admin" class="nav-btn" style="display:none">Beheer</a>
+    <button id="logout-btn" class="nav-btn danger">Uitloggen</button>
   </nav>
   <div style="display:flex;align-items:center;gap:10px">
     <div class="avatar" id="user-avatar">JM</div>
@@ -183,12 +183,12 @@ tr:last-child td{border-bottom:none}
 <!-- REPORT HEADER (after build) -->
 <div id="report-bar" style="display:none;padding:12px 28px;border-bottom:1px solid var(--border);display:none;align-items:center;justify-content:space-between;background:rgba(6,7,9,.6);backdrop-filter:blur(12px);position:sticky;top:54px;z-index:40">
   <div>
-    <div style="font-size:15px;font-weight:700;letter-spacing:-.02em" id="report-bar-title">Report</div>
+    <div style="font-size:15px;font-weight:700;letter-spacing:-.02em" id="report-bar-title">Rapport</div>
     <div style="font-size:12px;color:var(--muted);margin-top:1px" id="report-bar-sub"></div>
   </div>
   <div style="display:flex;gap:8px">
-    <button class="btn-ghost" id="save-report-btn" style="display:none" onclick="openSaveModal()">Save</button>
-    <button class="btn-ghost" onclick="resetToUpload()">← New report</button>
+    <button class="btn-ghost" id="save-report-btn" style="display:none" onclick="openSaveModal()">Opslaan</button>
+    <button class="btn-ghost" onclick="resetToUpload()">← Nieuw rapport</button>
   </div>
 </div>
 
@@ -197,33 +197,33 @@ tr:last-child td{border-bottom:none}
   <div id="upload-section">
     <div style="margin-bottom:24px">
       <div class="syne" style="font-size:26px;letter-spacing:-.04em;margin-bottom:5px">Report Builder</div>
-      <div style="color:var(--muted);font-size:13px">Basic report: Sens speeds + Event &amp; Alarm. Complete report: optionele OEE, sluice, orders/tons en Pasaban log.</div>
+      <div style="color:var(--muted);font-size:13px">Basic rapport: Sens snelheden + Event &amp; Alarm. Complete rapport: optionele OEE, sluis, orders/tonnen en Pasaban log.</div>
     </div>
 
     <div class="setup">
       <div class="card">
-        <div class="sl"><div class="sl-accent" style="background:var(--blue)"></div>Analysis context</div>
+        <div class="sl"><div class="sl-accent" style="background:var(--blue)"></div>Analyse context</div>
         <div class="fields">
-          <div class="field"><label>Machine</label><input id="machine" value="Sheeter" placeholder="e.g. DW08, Sheeter6"></div>
-          <div class="field"><label>Shift</label>
+          <div class="field"><label>Machine</label><input id="machine" value="Sheeter" placeholder="Bijv. DW08, Sheeter6"></div>
+          <div class="field"><label>Dienst</label>
             <select id="shift">
-              <option value="05:30-13:30">Morning 05:30-13:30</option>
-              <option value="13:30-21:30">Afternoon 13:30-21:30</option>
-              <option value="21:30-05:30">Night 21:30-05:30</option>
+              <option value="05:30-13:30">Ochtend 05:30-13:30</option>
+              <option value="13:30-21:30">Middag 13:30-21:30</option>
+              <option value="21:30-05:30">Nacht 21:30-05:30</option>
               <option value="custom">Custom</option>
             </select>
           </div>
           <div class="field"><label>Start</label><input id="shift-start" value="05:30"></div>
-          <div class="field"><label>End</label><input id="shift-end" value="13:30"></div>
+          <div class="field"><label>Einde</label><input id="shift-end" value="13:30"></div>
         </div>
       </div>
 
       <div class="card">
-        <div class="sl"><div class="sl-accent" style="background:var(--g)"></div>Report route</div>
+        <div class="sl"><div class="sl-accent" style="background:var(--g)"></div>Rapport route</div>
         <div id="route" class="route"></div>
         <div style="display:flex;align-items:center;gap:12px">
           <button id="build" class="btn-glow" disabled onclick="buildReport()">Build Basic Report</button>
-          <span class="muted" style="font-size:12px">Sens + Event/Alarm are required</span>
+          <span class="muted" style="font-size:12px">Sens + Event/Alarm zijn verplicht</span>
         </div>
       </div>
     </div>
@@ -232,7 +232,7 @@ tr:last-child td{border-bottom:none}
       <div class="drop req" id="dz-speed">
         <div class="drop-num">1</div>
         <input id="f-speed" type="file" accept=".csv,.txt,.xls,.xlsx">
-        <h3>Sens speeds <span style="color:var(--amber);font-size:10px">*</span></h3>
+        <h3>Sens snelheden <span style="color:var(--amber);font-size:10px">*</span></h3>
         <p>Linespeed, maxspeed, rejectgate, format change, length</p>
         <div class="drop-ext">CSV / Excel</div>
         <div id="s-speed" class="drop-status"></div>
@@ -241,7 +241,7 @@ tr:last-child td{border-bottom:none}
         <div class="drop-num">2</div>
         <input id="f-events" type="file" accept=".csv,.txt,.xls,.xlsx">
         <h3>Event &amp; Alarm report <span style="color:var(--amber);font-size:10px">*</span></h3>
-        <p>Events, alarms, duration, cause/comment</p>
+        <p>Events, alarmen, duur, oorzaak/commentaar</p>
         <div class="drop-ext">CSV / Excel / TXT</div>
         <div id="s-events" class="drop-status"></div>
       </div>
@@ -256,8 +256,8 @@ tr:last-child td{border-bottom:none}
       <div class="drop" id="dz-sluis">
         <div class="drop-num">4</div>
         <input id="f-sluis" type="file" accept=".csv,.txt,.xls,.xlsx">
-        <h3>Sluice report</h3>
-        <p>Sluice/reject gate downtime and sluice factors</p>
+        <h3>Sluis report</h3>
+        <p>Sluis/rejectgate downtime en sluisfactoren</p>
         <div class="drop-ext">CSV / Excel</div>
         <div id="s-sluis" class="drop-status"></div>
       </div>
@@ -265,7 +265,7 @@ tr:last-child td{border-bottom:none}
         <div class="drop-num">5</div>
         <input id="f-orders" type="file" accept=".csv,.txt,.xls,.xlsx">
         <h3>Orders &amp; tonnen</h3>
-        <p>Order list, meters, MT, tons/hour, startup times</p>
+        <p>Orderlijst, meters, MT, ton/u, opstarttijden</p>
         <div class="drop-ext">Excel</div>
         <div id="s-orders" class="drop-status"></div>
       </div>
@@ -273,7 +273,7 @@ tr:last-child td{border-bottom:none}
         <div class="drop-num">6</div>
         <input id="f-pasaban" type="file" accept=".txt,.log">
         <h3>Complete Pasaban log</h3>
-        <p>Resets/alarms, start/stop, operator, WID/SEG</p>
+        <p>Reset/alarms, start/stop, operator, WID/SEG</p>
         <div class="drop-ext">TXT / LOG</div>
         <div id="s-pasaban" class="drop-status"></div>
       </div>
@@ -286,8 +286,8 @@ tr:last-child td{border-bottom:none}
     <button class="tab" data-tab="operator">Operator</button>
     <button class="tab" data-tab="machine">Machine</button>
     <button class="tab" data-tab="quality">Quality / Reject</button>
-    <button class="tab" data-tab="optional">Optional data</button>
-    <button class="tab" data-tab="improve">Improvements</button>
+    <button class="tab" data-tab="optional">Optionele data</button>
+    <button class="tab" data-tab="improve">Verbeteringen</button>
   </div>
 
   <div id="report"></div>
@@ -296,12 +296,12 @@ tr:last-child td{border-bottom:none}
 <!-- SAVE MODAL -->
 <div class="modal-overlay" id="save-modal">
   <div class="modal">
-    <div class="syne" style="font-size:18px;margin-bottom:16px">Save report</div>
-    <div class="field" style="margin-bottom:12px"><label>Report title</label><input id="save-title" placeholder="e.g. Sheeter ochtend — high downtime"></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Machine, shift, and route are added automatically.</div>
+    <div class="syne" style="font-size:18px;margin-bottom:16px">Rapport opslaan</div>
+    <div class="field" style="margin-bottom:12px"><label>Rapporttitel</label><input id="save-title" placeholder="Bijv. Sheeter ochtend — hoge downtime"></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Machine, dienst en route worden automatisch toegevoegd.</div>
     <div style="display:flex;gap:8px">
-      <button class="btn-glow" id="save-confirm-btn" onclick="saveReport()">Save</button>
-      <button class="btn-ghost" onclick="closeSaveModal()">Cancel</button>
+      <button class="btn-glow" id="save-confirm-btn" onclick="saveReport()">Opslaan</button>
+      <button class="btn-ghost" onclick="closeSaveModal()">Annuleren</button>
     </div>
     <div id="save-msg" style="margin-top:10px;font-size:13px;color:var(--g)"></div>
   </div>
@@ -411,12 +411,12 @@ async function parsePasaban(file){
 
 function routeStatus(){
   const required=files.speed&&files.events;const optional=['oee','sluis','orders','pasaban'].filter(k=>files[k]).length;
-  const mode=!required?'Waiting for required data':optional?'Complete route':'Basic route';
+  const mode=!required?'Wachten op verplichte data':optional?'Complete route':'Basic route';
   $('route').innerHTML=`
     <span class="chip ${files.speed?'on':'warn'}">Sens ${files.speed?'✓':'!'}</span>
     <span class="chip ${files.events?'on':'warn'}">Events ${files.events?'✓':'!'}</span>
     <span class="chip ${optional?'on':'muted'}">${mode}</span>
-    <span class="chip muted">Optional: ${optional}/4</span>`;
+    <span class="chip muted">Optioneel: ${optional}/4</span>`;
   $('build').disabled=!required;
   $('build').textContent=optional?'Build Complete Report':'Build Basic Report';
 }
@@ -448,7 +448,7 @@ function build(data){
   // Show report bar
   $('report-bar').style.display='flex';
   $('report-bar-title').textContent=`${ctx.machine} — ${$('shift-start').value}–${$('shift-end').value}`;
-  $('report-bar-sub').textContent=`${['oee','sluis','orders','pasaban'].filter(k=>files[k]).length+2} sources loaded · ${new Date().toLocaleDateString('nl-NL')}`;
+  $('report-bar-sub').textContent=`${['oee','sluis','orders','pasaban'].filter(k=>files[k]).length+2} bronnen geladen · ${new Date().toLocaleDateString('nl-NL')}`;
   if(window.jmAuth?.token()){ $('save-report-btn').style.display='inline-block'; }
 }
 
@@ -467,30 +467,30 @@ function overview(x){
   const avail=fmt(x.availability);const perf=fmt(x.speed.perf);
   const tl=timeline(x.b,x.pasaban,x.speed);
   return`<div class="kpis">
-    ${kpi('Machine',x.machine,'analysis context','green')}
-    ${kpi('Performance',pctFmt(x.speed.perf),'of max possible speed','amber')}
-    ${kpi('Reject gate',minFmt(x.rejectMin),`${pctFmt(x.rejectMin/x.total*100)} of shift`,'red')}
-    ${kpi('Downtime',minFmt(x.stopMin),`${pctFmt(x.stopMin/x.total*100)} of shift`,'amber')}
-    ${kpi('Availability',pctFmt(x.availability),`${fmt(x.runningMin,0)} / ${fmt(x.total,0)} min`,'green')}
+    ${kpi('Machine',x.machine,'analyse context','green')}
+    ${kpi('Performance',pctFmt(x.speed.perf),'van max mogelijke snelheid','amber')}
+    ${kpi('Reject gate',minFmt(x.rejectMin),`${pctFmt(x.rejectMin/x.total*100)} van shift`,'red')}
+    ${kpi('Downtime',minFmt(x.stopMin),`${pctFmt(x.stopMin/x.total*100)} van shift`,'amber')}
+    ${kpi('Beschikbaarheid',pctFmt(x.availability),`${fmt(x.runningMin,0)} / ${fmt(x.total,0)} min`,'green')}
   </div>
   <div class="card">
     <div class="sl"><div class="sl-accent" style="background:var(--g)"></div>Shift timeline</div>
     <div class="timeline">${tl}</div>
     <div class="tl-labels"><span>${hhmm(x.b.s)}</span><span>${hhmm(x.b.e)}</span></div>
     <div class="tl-legend">
-      ${[['Running','var(--g)'],['Downtime','var(--red)'],['Format change','var(--blue)'],['Sluice/reject','var(--amber)']].map(([l,c])=>`<span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span class="tl-dot" style="background:${c}"></span>${l}</span>`).join('')}
+      ${[['Lopend','var(--g)'],['Stilstand','var(--red)'],['Formaatwisseling','var(--blue)'],['Sluis/reject','var(--amber)']].map(([l,c])=>`<span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span class="tl-dot" style="background:${c}"></span>${l}</span>`).join('')}
     </div>
   </div>
   <div class="grid2">
     <div class="card">
-      <div class="sl"><div class="sl-accent" style="background:var(--blue)"></div>Data sources</div>
-      ${[['Sens speeds','✓ loaded',`${x.speed.rows.length} rows`,'var(--g)'],['Event & Alarm','✓ loaded',`${x.events.events.length} events`,'var(--g)'],['Optional','info',`${['oee','sluis','orders','pasaban'].filter(k=>files[k]).length}/4 loaded`,x.pasaban||x.oee||x.sluis||x.orders?'var(--blue)':'var(--muted)']].map(([n,s,v,c])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${n}</span><div style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;color:var(--muted)">${v}</span><span style="font-size:11px;color:${c};font-weight:600">${s}</span></div></div>`).join('')}
+      <div class="sl"><div class="sl-accent" style="background:var(--blue)"></div>Data bronnen</div>
+      ${[['Sens snelheden','✓ geladen',`${x.speed.rows.length} rijen`,'var(--g)'],['Event & Alarm','✓ geladen',`${x.events.events.length} events`,'var(--g)'],['Optioneel','info',`${['oee','sluis','orders','pasaban'].filter(k=>files[k]).length}/4 geladen`,x.pasaban||x.oee||x.sluis||x.orders?'var(--blue)':'var(--muted)']].map(([n,s,v,c])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${n}</span><div style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;color:var(--muted)">${v}</span><span style="font-size:11px;color:${c};font-weight:600">${s}</span></div></div>`).join('')}
     </div>
     <div class="card">
-      <div class="sl"><div class="sl-accent" style="background:var(--red)"></div>Reject cause analysis</div>
-      ${hbar('Known cause',x.knownReject,x.rejectMin,'var(--g)')}
-      ${hbar('Unknown cause',x.unknownReject,x.rejectMin,'var(--red)')}
-      ${x.unknownReject/Math.max(x.rejectMin,1)>.3?`<div style="background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:8px;padding:10px 12px;margin-top:6px"><div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:3px">⚠ Registration gap</div><div style="font-size:11px;color:var(--muted)">More than 30% of reject time has no known cause. Register every reject opening.</div></div>`:''}
+      <div class="sl"><div class="sl-accent" style="background:var(--red)"></div>Reject oorzaak analyse</div>
+      ${hbar('Bekende oorzaak',x.knownReject,x.rejectMin,'var(--g)')}
+      ${hbar('Onbekende oorzaak',x.unknownReject,x.rejectMin,'var(--red)')}
+      ${x.unknownReject/Math.max(x.rejectMin,1)>.3?`<div style="background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:8px;padding:10px 12px;margin-top:6px"><div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:3px">⚠ Registratiegap</div><div style="font-size:11px;color:var(--muted)">Meer dan 30% van reject-tijd heeft geen bekende oorzaak. Registreer elke reject-opening.</div></div>`:''}
     </div>
   </div>`;
 }
@@ -508,15 +508,15 @@ function operator(x){
   const avgFormat=x.pasaban?.formats.length?x.pasaban.formats.reduce((s,f)=>s+f.dur,0)/x.pasaban.formats.length:0;
   return`<div class="kpis">
     ${kpi('Performance',pctFmt(x.speed.perf),'running speed vs max','amber')}
-    ${kpi('Format changeen',`${x.formatCount}×`,avgFormat?`avg. ${fmt(avgFormat,1)} min`:'','blue')}
-    ${kpi('Speed limiet changes',`${x.pasaban?.speedChanges||0}×`,'by operator','purple')}
-    ${kpi('Reel splices',`${x.pasaban?.splices||0}×`,'Pasaban optional','green')}
-    ${kpi('Pallet changes',`${x.pasaban?.pallet||0}×`,'Pasaban optional','green')}
+    ${kpi('Formaatwisselingen',`${x.formatCount}×`,avgFormat?`gem. ${fmt(avgFormat,1)} min`:'','blue')}
+    ${kpi('Speed limiet changes',`${x.pasaban?.speedChanges||0}×`,'door operator','purple')}
+    ${kpi('Reel splices',`${x.pasaban?.splices||0}×`,'Pasaban optioneel','green')}
+    ${kpi('Pallet changes',`${x.pasaban?.pallet||0}×`,'Pasaban optioneel','green')}
   </div>
   <div class="card">
-    <div class="sl"><div class="sl-accent" style="background:var(--amber)"></div>Operator-related events</div>
-    <table><thead><tr><th>Time</th><th>Duration</th><th>Description</th></tr></thead>
-    <tbody>${x.events.operator.slice(0,20).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--amber);font-size:11px">${minFmt(e.dur||0)}</td><td>${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">No operator events found.</td></tr>'}</tbody>
+    <div class="sl"><div class="sl-accent" style="background:var(--amber)"></div>Operator-gerelateerde events</div>
+    <table><thead><tr><th>Tijd</th><th>Duur</th><th>Omschrijving</th></tr></thead>
+    <tbody>${x.events.operator.slice(0,20).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--amber);font-size:11px">${minFmt(e.dur||0)}</td><td>${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">Geen operator-events gevonden.</td></tr>'}</tbody>
     </table>
   </div>`;
 }
@@ -525,21 +525,21 @@ function machine(x){
   return`<div class="kpis">
     ${kpi('Machine events',`${x.events.machine.length}×`,'Event & Alarm','red')}
     ${kpi('Machine stops',`${x.pasaban?.stops.length||0}×`,'Pasaban','red')}
-    ${kpi('Alarm activations',`${x.pasaban?.alarmCount||0}×`,'Pasaban raw','amber')}
-    ${kpi('Reset signals',`${x.pasaban?.resets||0}×`,'Pasaban','purple')}
-    ${kpi('Availability',pctFmt(x.availability),'Sens/shift','green')}
+    ${kpi('Alarm activaties',`${x.pasaban?.alarmCount||0}×`,'Pasaban raw','amber')}
+    ${kpi('Reset signalen',`${x.pasaban?.resets||0}×`,'Pasaban','purple')}
+    ${kpi('Beschikbaarheid',pctFmt(x.availability),'Sens/shift','green')}
   </div>
   <div class="grid2">
     <div class="card">
       <div class="sl"><div class="sl-accent" style="background:var(--red)"></div>Machine events</div>
-      <table><thead><tr><th>Time</th><th>Duration</th><th>Description</th></tr></thead>
-      <tbody>${x.events.machine.slice(0,20).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--red);font-size:11px">${minFmt(e.dur||0)}</td><td style="color:var(--muted)">${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">No machine events found.</td></tr>'}</tbody>
+      <table><thead><tr><th>Tijd</th><th>Duur</th><th>Omschrijving</th></tr></thead>
+      <tbody>${x.events.machine.slice(0,20).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--red);font-size:11px">${minFmt(e.dur||0)}</td><td style="color:var(--muted)">${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">Geen machine-events gevonden.</td></tr>'}</tbody>
       </table>
     </div>
     <div class="card">
-      <div class="sl"><div class="sl-accent" style="background:var(--amber)"></div>Top Pasaban alarms</div>
+      <div class="sl"><div class="sl-accent" style="background:var(--amber)"></div>Top Pasaban alarmen</div>
       ${x.pasaban?`<table><thead><tr><th>Code</th><th>Lvl</th><th>Alarm</th><th>#</th></tr></thead>
-      <tbody>${(x.pasaban.alarms||[]).slice(0,12).map(a=>`<tr><td class="mono" style="color:var(--blue);font-size:11px">${a.code}</td><td><span style="background:${a.level==='E'?'rgba(255,71,87,.15)':'rgba(245,158,11,.15)'};color:${a.level==='E'?'var(--red)':'var(--amber)'};border:1px solid ${a.level==='E'?'rgba(255,71,87,.3)':'rgba(245,158,11,.3)'};border-radius:99px;padding:1px 6px;font-size:10px;font-weight:700">${a.level}</span></td><td style="color:var(--muted);font-size:11px">${a.desc}</td><td class="mono" style="font-weight:700">${a.count}</td></tr>`).join('')}</tbody></table>`:'<div style="color:var(--muted);font-size:12px">No Pasaban log loaded.</div>'}
+      <tbody>${(x.pasaban.alarms||[]).slice(0,12).map(a=>`<tr><td class="mono" style="color:var(--blue);font-size:11px">${a.code}</td><td><span style="background:${a.level==='E'?'rgba(255,71,87,.15)':'rgba(245,158,11,.15)'};color:${a.level==='E'?'var(--red)':'var(--amber)'};border:1px solid ${a.level==='E'?'rgba(255,71,87,.3)':'rgba(245,158,11,.3)'};border-radius:99px;padding:1px 6px;font-size:10px;font-weight:700">${a.level}</span></td><td style="color:var(--muted);font-size:11px">${a.desc}</td><td class="mono" style="font-weight:700">${a.count}</td></tr>`).join('')}</tbody></table>`:'<div style="color:var(--muted);font-size:12px">Geen Pasaban log geladen.</div>'}
     </div>
   </div>`;
 }
@@ -547,37 +547,37 @@ function machine(x){
 function quality(x){
   return`<div class="kpis">
     ${kpi('Reject gate open',minFmt(x.rejectMin),'Sens data','red')}
-    ${kpi('Known cause',minFmt(x.knownReject),'Event & Alarm','green')}
-    ${kpi('Unknown reject',minFmt(x.unknownReject),'gap to explain','red')}
+    ${kpi('Bekende oorzaak',minFmt(x.knownReject),'Event & Alarm','green')}
+    ${kpi('Onbekende reject',minFmt(x.unknownReject),'gap te verklaren','red')}
     ${kpi('Quality events',`${x.events.quality.length}×`,'Event & Alarm','amber')}
-    ${kpi('Sluis data',x.sluis?'Geladen':'Optional',x.sluis?`${x.sluis.rowsCount} rows`:'not used','blue')}
+    ${kpi('Sluis data',x.sluis?'Geladen':'Optioneel',x.sluis?`${x.sluis.rowsCount} rijen`:'niet gebruikt','blue')}
   </div>
   <div class="card">
     <div class="sl"><div class="sl-accent" style="background:var(--red)"></div>Quality / reject events</div>
-    <table><thead><tr><th>Time</th><th>Duration</th><th>Description</th></tr></thead>
-    <tbody>${x.events.quality.slice(0,24).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--red);font-size:11px">${minFmt(e.dur||0)}</td><td style="color:var(--muted)">${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">No quality events found.</td></tr>'}</tbody>
+    <table><thead><tr><th>Tijd</th><th>Duur</th><th>Omschrijving</th></tr></thead>
+    <tbody>${x.events.quality.slice(0,24).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--red);font-size:11px">${minFmt(e.dur||0)}</td><td style="color:var(--muted)">${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">Geen quality-events gevonden.</td></tr>'}</tbody>
     </table>
   </div>`;
 }
 
 function optional(x){
   return`<div class="kpis">
-    ${kpi('OEE report',x.oee?'Geladen':'Optional',x.oee?`${x.oee.rowsCount} rows`:'niet loaded','blue')}
-    ${kpi('Sluice report',x.sluis?'Geladen':'Optional',x.sluis?`${x.sluis.rowsCount} rows`:'niet loaded','blue')}
-    ${kpi('Orders & tons',x.orders?'Geladen':'Optional',x.orders?`${fmt(x.orders.totalMT,1)} MT`:'niet loaded','green')}
-    ${kpi('Pasaban log',x.pasaban?'Geladen':'Optional',x.pasaban?`${x.pasaban.events.length} events`:'niet loaded','purple')}
-    ${kpi('Route',x.pasaban||x.oee||x.sluis||x.orders?'Complete':'Basic','auto selected','amber')}
+    ${kpi('OEE report',x.oee?'Geladen':'Optioneel',x.oee?`${x.oee.rowsCount} rijen`:'niet geladen','blue')}
+    ${kpi('Sluis report',x.sluis?'Geladen':'Optioneel',x.sluis?`${x.sluis.rowsCount} rijen`:'niet geladen','blue')}
+    ${kpi('Orders & tonnen',x.orders?'Geladen':'Optioneel',x.orders?`${fmt(x.orders.totalMT,1)} MT`:'niet geladen','green')}
+    ${kpi('Pasaban log',x.pasaban?'Geladen':'Optioneel',x.pasaban?`${x.pasaban.events.length} events`:'niet geladen','purple')}
+    ${kpi('Route',x.pasaban||x.oee||x.sluis||x.orders?'Complete':'Basic','auto geselecteerd','amber')}
   </div>
   <div class="grid2">
     <div class="card">
       <div class="sl"><div class="sl-accent" style="background:var(--purple)"></div>Pasaban WID/SEG snapshots</div>
-      ${x.pasaban?`<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
-        ${[['WID snapshots',x.pasaban.wid.length],['SEG snapshots',x.pasaban.seg.length],['Format changes',x.pasaban.formats.length],['Resets',x.pasaban.resets],['Pallet changes',x.pasaban.pallet],['Reel splices',x.pasaban.splices]].map(([k,v])=>`<tr><td>${k}</td><td class="mono" style="font-weight:700">${v}</td></tr>`).join('')}</tbody></table>`:'<div style="color:var(--muted);font-size:12px">No Pasaban log loaded.</div>'}
+      ${x.pasaban?`<table><thead><tr><th>Metric</th><th>Waarde</th></tr></thead><tbody>
+        ${[['WID snapshots',x.pasaban.wid.length],['SEG snapshots',x.pasaban.seg.length],['Format changes',x.pasaban.formats.length],['Resets',x.pasaban.resets],['Pallet changes',x.pasaban.pallet],['Reel splices',x.pasaban.splices]].map(([k,v])=>`<tr><td>${k}</td><td class="mono" style="font-weight:700">${v}</td></tr>`).join('')}</tbody></table>`:'<div style="color:var(--muted);font-size:12px">Geen Pasaban log geladen.</div>'}
     </div>
     <div class="card">
-      <div class="sl"><div class="sl-accent" style="background:var(--blue)"></div>Optional files</div>
-      <table><thead><tr><th>File</th><th>Status</th><th>Info</th></tr></thead><tbody>
-        ${[['OEE',x.oee],['Sluis',x.sluis],['Orders',x.orders],['Pasaban',x.pasaban]].map(([n,d])=>`<tr><td>${n}</td><td><span style="color:${d?'var(--g)':'var(--muted)'};">${d?'✓ loaded':'—'}</span></td><td style="color:var(--muted);font-size:11px">${d?(d.rowsCount||d.events?.length||0)+' items':'niet loaded'}</td></tr>`).join('')}
+      <div class="sl"><div class="sl-accent" style="background:var(--blue)"></div>Optionele bestanden</div>
+      <table><thead><tr><th>Bestand</th><th>Status</th><th>Info</th></tr></thead><tbody>
+        ${[['OEE',x.oee],['Sluis',x.sluis],['Orders',x.orders],['Pasaban',x.pasaban]].map(([n,d])=>`<tr><td>${n}</td><td><span style="color:${d?'var(--g)':'var(--muted)'};">${d?'✓ geladen':'—'}</span></td><td style="color:var(--muted);font-size:11px">${d?(d.rowsCount||d.events?.length||0)+' items':'niet geladen'}</td></tr>`).join('')}
       </tbody></table>
     </div>
   </div>`;
@@ -585,19 +585,19 @@ function optional(x){
 
 function makeImprovements(x){
   const arr=[];
-  if(x.speed.perf>0&&x.speed.perf<85)arr.push(['focus','Speed below machine max',`Average performance ${pctFmt(x.speed.perf)}. Compare every format with max speed.`]);
-  if(x.rejectMin>0&&x.unknownReject/x.rejectMin>.3)arr.push(['focus','Reject registration incomplete',`${minFmt(x.unknownReject)} reject time without known cause. Register every reject opening.`]);
-  if(x.pasaban?.resets>20)arr.push(['warn','High reset activity',`${x.pasaban.resets} reset signals in this shift.`]);
-  const topAlarm=x.pasaban?.alarms?.[0];if(topAlarm)arr.push(['warn',`Top alarm: ${topAlarm.code}`,`${topAlarm.desc} — ${topAlarm.count}× in this shift.`]);
-  if(x.availability>=92)arr.push(['ok','Availability sterk',`${pctFmt(x.availability)} availability. Focus on speed and reject registration.`]);
-  if(!arr.length)arr.push(['ok','No major improvement points found','Good work. Check the other tabs for details.']);
+  if(x.speed.perf>0&&x.speed.perf<85)arr.push(['focus','Speed onder machine max',`Gem. performance ${pctFmt(x.speed.perf)}. Vergelijk elk formaat met max snelheid.`]);
+  if(x.rejectMin>0&&x.unknownReject/x.rejectMin>.3)arr.push(['focus','Reject registratie incomplete',`${minFmt(x.unknownReject)} reject-tijd zonder bekende oorzaak. Registreer elke reject-opening.`]);
+  if(x.pasaban?.resets>20)arr.push(['warn','Hoog reset-activiteit',`${x.pasaban.resets} reset-signalen in deze shift.`]);
+  const topAlarm=x.pasaban?.alarms?.[0];if(topAlarm)arr.push(['warn',`Top alarm: ${topAlarm.code}`,`${topAlarm.desc} — ${topAlarm.count}× in deze shift.`]);
+  if(x.availability>=92)arr.push(['ok','Beschikbaarheid sterk',`${pctFmt(x.availability)} beschikbaarheid. Focus op snelheid en reject-registratie.`]);
+  if(!arr.length)arr.push(['ok','Geen grote verbeterpunten gevonden','Goed gedaan! Controleer de andere tabs voor details.']);
   return arr;
 }
 
 function improve(items){
   const cc={focus:'var(--red)',warn:'var(--amber)',ok:'var(--g)'};
   const ic={focus:'↑','warn':'!','ok':'✓'};
-  return`<div style="margin-bottom:16px"><div class="syne" style="font-size:20px;letter-spacing:-.03em;margin-bottom:4px">Priority actions</div><div style="color:var(--muted);font-size:13px">Based on the uploaded data files.</div></div>
+  return`<div style="margin-bottom:16px"><div class="syne" style="font-size:20px;letter-spacing:-.03em;margin-bottom:4px">Priority actions</div><div style="color:var(--muted);font-size:13px">Op basis van de geüploade databestanden.</div></div>
   ${items.map(([cls,t,b])=>`<div class="imp" style="background:${cc[cls]}08;border-color:${cc[cls]}25;margin-bottom:10px;backdrop-filter:blur(10px)">
     <div style="width:30px;height:30px;border-radius:50%;background:${cc[cls]}20;border:1px solid ${cc[cls]}40;display:flex;align-items:center;justify-content:center;font-size:13px;color:${cc[cls]};flex-shrink:0">${ic[cls]}</div>
     <div><div style="font-size:13px;font-weight:700;margin-bottom:5px">${t}</div><div style="font-size:12px;color:var(--muted);line-height:1.6">${b}</div></div>
@@ -634,17 +634,17 @@ function openSaveModal(){$('save-modal').classList.add('open');$('save-title').f
 function closeSaveModal(){$('save-modal').classList.remove('open');$('save-msg').textContent='';}
 
 async function saveReport(){
-  const title=$('save-title').value.trim();if(!title){$('save-msg').textContent='Enter a title.';$('save-msg').style.color='var(--red)';return;}
-  $('save-confirm-btn').disabled=true;$('save-msg').textContent='Saving...…';$('save-msg').style.color='var(--muted)';
+  const title=$('save-title').value.trim();if(!title){$('save-msg').textContent='Vul een titel in.';$('save-msg').style.color='var(--red)';return;}
+  $('save-confirm-btn').disabled=true;$('save-msg').textContent='Opslaan…';$('save-msg').style.color='var(--muted)';
   try{
     const ctx=_lastBuildCtx;const opt=['oee','sluis','orders','pasaban'].filter(k=>files[k]);
     const route=opt.length?'Complete':'Basic';
-    const sources=['Sens speeds','Event & Alarm'].concat(opt.map(k=>({oee:'OEE report',sluis:'Sluice report',orders:'Orders & tons',pasaban:'Pasaban log'}[k])));
+    const sources=['Sens snelheden','Event & Alarm'].concat(opt.map(k=>({oee:'OEE report',sluis:'Sluis report',orders:'Orders & tonnen',pasaban:'Pasaban log'}[k])));
     const html=$('report').innerHTML;
     const res=await fetch('/api/reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,machine:ctx?.machine||'',shift:`${$('shift-start').value}–${$('shift-end').value}`,route,sources,html,summary:''})});
     const data=await res.json();
-    if(!res.ok)throw new Error(data.error||'Save failed.');
-    $('save-msg').textContent='✓ Report saved!';$('save-msg').style.color='var(--g)';
+    if(!res.ok)throw new Error(data.error||'Opslaan mislukt.');
+    $('save-msg').textContent='✓ Rapport opgeslagen!';$('save-msg').style.color='var(--g)';
     setTimeout(closeSaveModal,1500);
   }catch(e){$('save-msg').textContent=e.message;$('save-msg').style.color='var(--red)';}
   finally{$('save-confirm-btn').disabled=false;}
