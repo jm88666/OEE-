@@ -1,43 +1,190 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mijn rapporten - JMAnalyzeTool</title>
+<title>My reports - JMAnalyzeTool</title>
 <script src="/auth-client.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2128;--border:#2a2d35;--text:#e8eaf0;--muted:#8b8fa8;--green:#3ecf8e;--red:#f04040}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,system-ui,sans-serif}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:22px 32px;border-bottom:1px solid var(--border);background:#0b0c0f}.top h1{margin:0;font-size:24px}.top nav{display:flex;gap:10px;flex-wrap:wrap}.top a,.top button{border:1px solid var(--border);background:var(--bg2);color:var(--text);border-radius:7px;padding:8px 11px;text-decoration:none;font-weight:800;cursor:pointer}.wrap{padding:24px 32px;max-width:1200px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:360px 1fr;gap:16px}.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}.report-item{cursor:pointer}.report-item:hover{border-color:var(--green)}.report-item strong{display:block}.meta{font-size:12px;color:var(--muted);margin-top:5px}.viewer{min-height:420px;overflow:auto}.btn-danger{color:#fff!important;background:var(--red)!important;border-color:var(--red)!important}@media(max-width:900px){.grid{grid-template-columns:1fr}.top{display:block}.top nav{margin-top:12px}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060709;--g:#00e5a0;--blue:#60a5fa;--purple:#a78bfa;
+  --amber:#f59e0b;--red:#ff4757;
+  --text:#f0f2fa;--muted:#4a5070;--dim:#252838;
+  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);
+  --glass:rgba(255,255,255,.03);--glass2:rgba(255,255,255,.06);
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.syne{font-family:'Syne',sans-serif;font-weight:800}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.025;pointer-events:none;z-index:100}
+.mesh{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.mesh::before{content:'';position:absolute;top:-20%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse,rgba(96,165,250,.09) 0%,transparent 70%);filter:blur(70px)}
+.mesh::after{content:'';position:absolute;bottom:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(ellipse,rgba(167,139,250,.08) 0%,transparent 70%);filter:blur(80px)}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:rgba(6,7,9,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav-logo{display:flex;align-items:center;gap:10px;font-size:16px;letter-spacing:-.03em}
+.nav-logo-icon{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--g),var(--blue));display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,229,160,.4)}
+.nav-links{display:flex;gap:6px}
+.nav-btn{border:1px solid var(--border2);background:var(--glass);color:var(--text);border-radius:8px;padding:7px 12px;text-decoration:none;font-weight:700;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;transition:all .2s}
+.nav-btn:hover{background:var(--glass2);border-color:rgba(255,255,255,.15)}
+.nav-btn.danger{background:rgba(255,71,87,.12);color:var(--red);border-color:rgba(255,71,87,.3)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--g),var(--blue));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#020c07;box-shadow:0 0 10px rgba(0,229,160,.4)}
+
+/* MAIN */
+.wrap{max-width:1200px;margin:0 auto;padding:28px 24px;position:relative;z-index:1}
+.page-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px}
+.page-title{font-size:24px;letter-spacing:-.04em;margin-bottom:3px}
+.page-sub{color:var(--muted);font-size:13px}
+.btn-glow{border:none;border-radius:10px;background:var(--g);color:#020c07;padding:10px 18px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 0 20px rgba(0,229,160,.3);transition:all .2s}
+.btn-glow:hover{box-shadow:0 0 32px rgba(0,229,160,.5);transform:translateY(-1px)}
+
+/* GRID */
+.grid{display:grid;grid-template-columns:320px 1fr;gap:14px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+
+/* REPORT ITEMS */
+.report-item{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .2s}
+.report-item:hover,.report-item.selected{border-color:rgba(0,229,160,.4);background:rgba(0,229,160,.05);box-shadow:0 0 16px rgba(0,229,160,.12)}
+.report-title{font-size:13px;font-weight:700;margin-bottom:6px;line-height:1.4}
+.report-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:5px;font-size:11px;color:var(--muted)}
+.report-date{font-size:11px;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.03em}
+
+/* VIEWER */
+.viewer{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:16px;padding:20px 22px;min-height:400px}
+.viewer-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:12px}
+.viewer-title{font-size:16px;font-weight:700;letter-spacing:-.02em;margin-bottom:4px}
+.viewer-sub{font-size:12px;color:var(--muted)}
+.viewer-placeholder{height:320px;background:rgba(255,255,255,.02);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+.viewer-empty{color:var(--muted);font-size:13px;text-align:center;padding:60px 20px}
+
+.muted{color:var(--muted)}
 </style>
 </head>
 <body>
-<header class="top"><div><h1>Mijn rapporten</h1><div class="muted" id="sub">Laden...</div></div><nav><a href="/report">Nieuw rapport</a><a id="admin-link" href="/admin" style="display:none">Beheer</a><button id="logout">Uitloggen</button></nav></header>
-<main class="wrap"><div class="grid"><section><div id="list"></div></section><section class="card viewer"><div id="viewer" class="muted">Kies een rapport om de inhoud te bekijken.</div></section></div></main>
+<div class="mesh"></div>
+
+<header class="nav">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <polyline points="1,12 5,7 8,10 11,4 15,7" stroke="#020c07" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="syne">JM<span style="color:var(--g)">Analyze</span>Tool</span>
+  </div>
+  <nav class="nav-links">
+    <a href="/report" class="nav-btn">New report</a>
+    <a id="admin-link" href="/admin" class="nav-btn" style="display:none">Admin</a>
+    <button id="logout" class="nav-btn danger">Log out</button>
+  </nav>
+  <div class="nav-right">
+    <div class="avatar" id="avatar">JM</div>
+    <span class="muted" id="user-email" style="font-size:12px"></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-header">
+    <div>
+      <div class="syne page-title">My reports</div>
+      <div class="page-sub" id="sub">Laden…</div>
+    </div>
+    <button class="btn-glow" onclick="window.location.href='/report'">+ New report</button>
+  </div>
+
+  <div class="grid">
+    <section id="list"></section>
+    <section class="viewer">
+      <div id="viewer" class="viewer-empty">Select a report to view its contents.</div>
+    </section>
+  </div>
+</main>
+
 <script>
 const list = document.getElementById('list');
 const viewer = document.getElementById('viewer');
 let current = null;
+
 document.getElementById('logout').onclick = () => window.jmAuth.logout();
-document.addEventListener('jm:user', e => { if(e.detail.user.role === 'admin') document.getElementById('admin-link').style.display='inline-block'; loadReports(); });
-async function loadReports(){
+
+document.addEventListener('jm:user', e => {
+  const user = e.detail.user;
+  if (user.role === 'admin') document.getElementById('admin-link').style.display = 'inline-block';
+  const initials = (user.name || user.email).slice(0, 2).toUpperCase();
+  document.getElementById('avatar').textContent = initials;
+  document.getElementById('user-email').textContent = user.email;
+  loadReports();
+});
+
+function badgeHtml(text, color) {
+  return `<span class="badge" style="background:${color}18;border:1px solid ${color}40;color:${color}">${esc(text)}</span>`;
+}
+
+async function loadReports() {
   const res = await fetch('/api/reports');
   const data = await res.json();
-  document.getElementById('sub').textContent = `Bewaartermijn: ${data.retentionDays} dagen · ${data.reports.length} rapporten`;
-  list.innerHTML = data.reports.map(r => `<article class="card report-item" data-id="${r.id}"><strong>${escapeHtml(r.title)}</strong><div class="meta">${escapeHtml(r.machine || '-')} · ${escapeHtml(r.shift || '-')} · ${escapeHtml(r.route || '-')}</div><div class="meta">${new Date(r.createdAt).toLocaleString('nl-NL')} · verloopt ${new Date(r.expiresAt).toLocaleDateString('nl-NL')}</div></article>`).join('') || '<div class="card muted">Nog geen rapporten opgeslagen.</div>';
-  list.querySelectorAll('.report-item').forEach(item => item.onclick = () => openReport(item.dataset.id));
+  document.getElementById('sub').textContent = `Retention: ${data.retentionDays} days · ${data.reports.length} reports`;
+
+  if (!data.reports.length) {
+    list.innerHTML = `<div class="report-item" style="cursor:default;opacity:.6">Nog geen reports opgeslagen.</div>`;
+    return;
+  }
+
+  list.innerHTML = data.reports.map(r => `
+    <article class="report-item" data-id="${r.id}">
+      <div class="report-title">${esc(r.title)}</div>
+      <div class="report-meta">
+        <span>${esc(r.machine || '-')}</span>
+        <span style="color:var(--dim)">·</span>
+        <span>${esc(r.shift || '-')}</span>
+        ${r.route ? badgeHtml(r.route, r.route === 'Complete' ? '#60a5fa' : '#4a5070') : ''}
+      </div>
+      <div class="report-date">${new Date(r.createdAt).toLocaleString('nl-NL')} · expires ${new Date(r.expiresAt).toLocaleDateString('nl-NL')}</div>
+    </article>
+  `).join('');
+
+  list.querySelectorAll('.report-item').forEach(item => {
+    item.onclick = () => {
+      list.querySelectorAll('.report-item').forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+      openReport(item.dataset.id);
+    };
+  });
 }
-async function openReport(id){
+
+async function openReport(id) {
+  viewer.innerHTML = `<div class="viewer-empty">Laden…</div>`;
   const res = await fetch('/api/reports/' + encodeURIComponent(id));
   const data = await res.json();
-  if(!res.ok){ viewer.textContent = data.error || 'Rapport openen mislukt.'; return; }
+  if (!res.ok) { viewer.innerHTML = `<div class="viewer-empty" style="color:var(--red)">${esc(data.error || 'Failed to open report.')}</div>`; return; }
   current = data.report;
-  viewer.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:14px"><div><h2 style="margin:0 0 4px">${escapeHtml(current.title)}</h2><div class="muted">${escapeHtml(current.email)} · ${new Date(current.createdAt).toLocaleString('nl-NL')}</div></div><button class="btn-danger" onclick="deleteCurrent()">Verwijderen</button></div>${current.html}`;
+  viewer.innerHTML = `
+    <div class="viewer-header">
+      <div>
+        <div class="viewer-title">${esc(current.title)}</div>
+        <div class="viewer-sub">${esc(current.email)} · ${new Date(current.createdAt).toLocaleString('nl-NL')}</div>
+      </div>
+      <button onclick="deleteCurrent()" style="background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.3);border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700">Delete</button>
+    </div>
+    <div style="background:rgba(255,255,255,.02);border-radius:10px;overflow:auto;min-height:280px">${current.html}</div>
+  `;
 }
-async function deleteCurrent(){
-  if(!current || !confirm('Rapport verwijderen?')) return;
-  const res = await fetch('/api/reports/' + encodeURIComponent(current.id), { method:'DELETE' });
-  if(res.ok){ current=null; viewer.textContent='Rapport verwijderd.'; loadReports(); }
+
+async function deleteCurrent() {
+  if (!current || !confirm('Delete report?')) return;
+  const res = await fetch('/api/reports/' + encodeURIComponent(current.id), { method: 'DELETE' });
+  if (res.ok) { current = null; viewer.innerHTML = '<div class="viewer-empty">Report deleted.</div>'; loadReports(); }
 }
-function escapeHtml(v){ return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+}
 </script>
 </body>
 </html>
