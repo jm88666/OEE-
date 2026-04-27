@@ -133,7 +133,6 @@ const sendReportBuilder = (res, next) => {
     if (err) return next(err);
     const page = injectScripts(html, [
       '<script src="/auth-client.js"></script>',
-      '<script src="/report-storage.js"></script>',
       '<script src="/analysis-layer.js"></script>',
       '<script src="/demo-scenarios.js"></script>',
     ]);

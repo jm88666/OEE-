@@ -1,58 +1,235 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Beheer - JMAnalyzeTool</title>
+<title>Admin - JMAnalyzeTool</title>
 <script src="/auth-client.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2128;--border:#2a2d35;--text:#e8eaf0;--muted:#8b8fa8;--green:#3ecf8e;--amber:#f59e0b;--red:#f04040;--blue:#60a5fa}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,system-ui,sans-serif}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:22px 32px;border-bottom:1px solid var(--border);background:#0b0c0f}.top h1{margin:0;font-size:24px}.top nav{display:flex;gap:10px;flex-wrap:wrap}.top a,.top button,.smallbtn{border:1px solid var(--border);background:var(--bg2);color:var(--text);border-radius:7px;padding:8px 11px;text-decoration:none;font-weight:800;cursor:pointer}.wrap{padding:24px 32px;max-width:1320px}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}.k{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900}.v{font-size:28px;font-weight:950;margin-top:6px}.tabs{display:flex;gap:8px;margin-bottom:14px}.tab{border:1px solid var(--border);background:var(--bg2);color:var(--text);border-radius:7px;padding:9px 12px;font-weight:900;cursor:pointer}.tab.active{border-color:var(--green);color:var(--green)}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid rgba(255,255,255,.07);padding:9px 10px;text-align:left;font-size:13px}th{color:var(--muted);font-size:11px;text-transform:uppercase}.muted{color:var(--muted)}.red{color:var(--red)}.green{color:var(--green)}@media(max-width:900px){.cards{grid-template-columns:1fr}.top{display:block}.top nav{margin-top:12px}.tablewrap{overflow:auto}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060709;--g:#00e5a0;--blue:#60a5fa;--purple:#a78bfa;
+  --amber:#f59e0b;--red:#ff4757;
+  --text:#f0f2fa;--muted:#4a5070;--dim:#252838;
+  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);
+  --glass:rgba(255,255,255,.03);--glass2:rgba(255,255,255,.06);
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.syne{font-family:'Syne',sans-serif;font-weight:800}
+.mono{font-family:'Space Mono',monospace}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.025;pointer-events:none;z-index:100}
+.mesh{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.mesh::before{content:'';position:absolute;top:-20%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse,rgba(167,139,250,.1) 0%,transparent 70%);filter:blur(70px)}
+.mesh::after{content:'';position:absolute;bottom:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(ellipse,rgba(96,165,250,.08) 0%,transparent 70%);filter:blur(80px)}
+
+.nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:rgba(6,7,9,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav-logo{display:flex;align-items:center;gap:10px;font-size:16px;letter-spacing:-.03em}
+.nav-logo-icon{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--g),var(--blue));display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,229,160,.4)}
+.nav-links{display:flex;gap:6px}
+.nav-btn{border:1px solid var(--border2);background:var(--glass);color:var(--text);border-radius:8px;padding:7px 12px;text-decoration:none;font-weight:700;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;transition:all .2s}
+.nav-btn:hover{background:var(--glass2)}
+.nav-btn.danger{background:rgba(255,71,87,.12);color:var(--red);border-color:rgba(255,71,87,.3)}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--g),var(--blue));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#020c07;box-shadow:0 0 10px rgba(0,229,160,.4)}
+
+.wrap{max-width:1320px;margin:0 auto;padding:28px 24px;position:relative;z-index:1}
+.page-header{margin-bottom:22px}
+.page-title{font-size:24px;letter-spacing:-.04em;margin-bottom:3px}
+.page-sub{color:var(--muted);font-size:13px}
+
+/* STAT CARDS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;right:0;width:50px;height:50px;border-radius:0 14px 0 0}
+.stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px}
+.stat-value{font-size:30px;font-weight:700;font-family:'Space Mono',monospace}
+
+/* TABS */
+.tab-row{display:flex;gap:6px;margin-bottom:14px}
+.tab-btn{border:1px solid var(--border);background:var(--glass);color:var(--muted);border-radius:8px;padding:7px 15px;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;cursor:pointer;backdrop-filter:blur(8px);transition:all .15s}
+.tab-btn.active{border-color:rgba(0,229,160,.5);background:rgba(0,229,160,.1);color:var(--g)}
+
+/* TABLE */
+.table-card{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:18px 20px;overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.01)}
+
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.03em}
+.small-btn{border-radius:6px;padding:4px 10px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;border:1px solid}
+.muted{color:var(--muted)}
 </style>
 </head>
 <body>
-<header class="top"><div><h1>Beheer</h1><div class="muted">Accounts, rapporten en gebruikskosten bewaken</div></div><nav><a href="/report">Nieuw rapport</a><a href="/my-reports">Mijn rapporten</a><button id="logout">Uitloggen</button></nav></header>
-<main class="wrap"><section class="cards" id="cards"></section><div class="tabs"><button class="tab active" data-tab="reports">Rapporten</button><button class="tab" data-tab="users">Gebruikers</button><button class="tab" data-tab="audit">Audit</button></div><section class="card tablewrap" id="content">Laden...</section></main>
+<div class="mesh"></div>
+
+<header class="nav">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <polyline points="1,12 5,7 8,10 11,4 15,7" stroke="#020c07" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="syne">JM<span style="color:var(--g)">Analyze</span>Tool</span>
+  </div>
+  <nav class="nav-links">
+    <a href="/report" class="nav-btn">New report</a>
+    <a href="/my-reports" class="nav-btn">My reports</a>
+    <button id="logout" class="nav-btn danger">Log out</button>
+  </nav>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="avatar" id="avatar">JM</div>
+    <span class="muted" id="user-email" style="font-size:12px"></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-header">
+    <div class="syne page-title">Admin</div>
+    <div class="page-sub">Accounts, reports en gebruikskosten bewaken</div>
+  </div>
+
+  <div class="stats" id="cards"></div>
+
+  <div class="tab-row">
+    <button class="tab-btn active" data-tab="reports">Reports</button>
+    <button class="tab-btn" data-tab="users">Users</button>
+    <button class="tab-btn" data-tab="audit">Audit log</button>
+  </div>
+
+  <div class="table-card" id="content">Laden…</div>
+</main>
+
 <script>
 let state = { reports: [], users: [], audit: [], me: null };
+
 document.getElementById('logout').onclick = () => window.jmAuth.logout();
+
 document.addEventListener('jm:user', async e => {
   state.me = e.detail.user;
-  if(state.me.role !== 'admin'){ document.getElementById('content').innerHTML = '<span class="red">Geen beheerrechten.</span>'; return; }
+  const initials = (state.me.name || state.me.email).slice(0, 2).toUpperCase();
+  document.getElementById('avatar').textContent = initials;
+  document.getElementById('user-email').textContent = state.me.email;
+  if (state.me.role !== 'admin') {
+    document.getElementById('content').innerHTML = '<div style="color:var(--red);padding:20px">No admin permissions.</div>';
+    return;
+  }
   await loadAll();
 });
-document.querySelectorAll('.tab').forEach(btn => btn.onclick = () => { document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(btn.dataset.tab); });
-async function get(url){ const res=await fetch(url); const data=await res.json(); if(!res.ok) throw new Error(data.error || 'Laden mislukt.'); return data; }
-async function loadAll(){
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render(btn.dataset.tab);
+  };
+});
+
+async function get(url) {
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load.');
+  return data;
+}
+
+async function loadAll() {
   const [reports, users, audit] = await Promise.all([get('/api/reports'), get('/api/admin/users'), get('/api/admin/audit')]);
-  state.reports = reports.reports; state.users = users.users; state.audit = audit.audit;
-  renderCards(reports.retentionDays); render('reports');
+  state.reports = reports.reports;
+  state.users = users.users;
+  state.audit = audit.audit;
+  renderCards(reports.retentionDays);
+  render('reports');
 }
-function renderCards(days){
+
+function renderCards(days) {
   const ai = state.audit.filter(a => a.type === 'ai_report_generated').length;
-  const saved = state.audit.filter(a => a.type === 'report_saved').length;
-  document.getElementById('cards').innerHTML = card('Gebruikers', state.users.length) + card('Rapporten', state.reports.length) + card('AI calls', ai) + card('Bewaartermijn', `${days} dagen`);
+  document.getElementById('cards').innerHTML = [
+    { k: 'Users', v: state.users.length, c: 'var(--blue)' },
+    { k: 'Reports', v: state.reports.length, c: 'var(--g)' },
+    { k: 'AI calls', v: ai, c: 'var(--purple)' },
+    { k: 'Retention', v: days + 'd', c: 'var(--amber)' },
+  ].map(s => `
+    <div class="stat-card" style="box-shadow:inset 0 0 40px ${s.c}08">
+      <div style="position:absolute;top:0;right:0;width:50px;height:50px;background:radial-gradient(circle at 100% 0%,${s.c}20,transparent 70%)"></div>
+      <div class="stat-label">${s.k}</div>
+      <div class="stat-value" style="color:${s.c};text-shadow:0 0 16px ${s.c}66">${s.v}</div>
+    </div>
+  `).join('');
 }
-function card(k,v){ return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
-function render(tab){
-  if(tab === 'reports') return reportsTable();
-  if(tab === 'users') return usersTable();
-  return auditTable();
+
+function render(tab) {
+  if (tab === 'reports') reportsTable();
+  else if (tab === 'users') usersTable();
+  else auditTable();
 }
-function reportsTable(){
-  document.getElementById('content').innerHTML = `<table><thead><tr><th>Tijd</th><th>Titel</th><th>Gebruiker</th><th>Vestiging</th><th>Route</th><th>Bronnen</th><th>Verloopt</th></tr></thead><tbody>${state.reports.map(r => `<tr><td>${date(r.createdAt)}</td><td>${esc(r.title)}</td><td>${esc(r.email)}</td><td>${esc(r.location || '-')}</td><td>${esc(r.route)}</td><td>${esc((r.sources||[]).join(', '))}</td><td>${new Date(r.expiresAt).toLocaleDateString('nl-NL')}</td></tr>`).join('')}</tbody></table>`;
+
+function reportsTable() {
+  document.getElementById('content').innerHTML = `<table>
+    <thead><tr>
+      <th>Time</th><th>Title</th><th>User</th><th>Site</th><th>Route</th><th>Expires</th>
+    </tr></thead>
+    <tbody>${state.reports.map(r => `<tr>
+      <td class="mono" style="font-size:12px;color:var(--muted)">${date(r.createdAt)}</td>
+      <td>${esc(r.title)}</td>
+      <td class="mono" style="font-size:12px;color:var(--muted)">${esc(r.email)}</td>
+      <td style="color:var(--muted)">${esc(r.location || '-')}</td>
+      <td>${badge(r.route, r.route === 'Complete' ? 'var(--blue)' : 'var(--muted)')}</td>
+      <td style="color:var(--muted);font-size:12px">${new Date(r.expiresAt).toLocaleDateString('nl-NL')}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
 }
-function usersTable(){
-  document.getElementById('content').innerHTML = `<table><thead><tr><th>Naam</th><th>E-mail</th><th>Vestiging</th><th>Rol</th><th>Status</th><th>Aangemaakt</th><th>Actie</th></tr></thead><tbody>${state.users.map(u => `<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.location || '-')}</td><td>${esc(u.role)}</td><td class="${u.active === false ? 'red' : 'green'}">${u.active === false ? 'Geblokkeerd' : 'Actief'}</td><td>${date(u.createdAt)}</td><td><button class="smallbtn" onclick="toggleUser('${u.id}', ${u.active !== false})">${u.active === false ? 'Activeren' : 'Blokkeren'}</button></td></tr>`).join('')}</tbody></table>`;
+
+function usersTable() {
+  document.getElementById('content').innerHTML = `<table>
+    <thead><tr>
+      <th>Name</th><th>Email</th><th>Site</th><th>Role</th><th>Status</th><th>Created</th><th>Action</th>
+    </tr></thead>
+    <tbody>${state.users.map(u => `<tr>
+      <td style="font-weight:600">${esc(u.name)}</td>
+      <td class="mono" style="font-size:12px;color:var(--muted)">${esc(u.email)}</td>
+      <td style="color:var(--muted)">${esc(u.location || '-')}</td>
+      <td>${badge(u.role, u.role === 'admin' ? 'var(--purple)' : 'var(--blue)')}</td>
+      <td>${badge(u.active === false ? 'Blocked' : 'Active', u.active === false ? 'var(--red)' : 'var(--g)')}</td>
+      <td style="color:var(--muted);font-size:12px">${date(u.createdAt)}</td>
+      <td><button class="small-btn" onclick="toggleUser('${u.id}',${u.active !== false})"
+        style="background:${u.active !== false ? 'rgba(255,71,87,.12)' : 'rgba(0,229,160,.12)'};color:${u.active !== false ? 'var(--red)' : 'var(--g)'};border-color:${u.active !== false ? 'rgba(255,71,87,.3)' : 'rgba(0,229,160,.3)'}">
+        ${u.active !== false ? 'Block' : 'Activate'}
+      </button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
 }
-function auditTable(){
-  document.getElementById('content').innerHTML = `<table><thead><tr><th>Tijd</th><th>Actie</th><th>Gebruiker</th><th>Details</th></tr></thead><tbody>${state.audit.map(a => `<tr><td>${date(a.at)}</td><td>${esc(a.type)}</td><td>${esc(a.email || '-')}</td><td>${esc(JSON.stringify(a.details || {}))}</td></tr>`).join('')}</tbody></table>`;
+
+function auditTable() {
+  document.getElementById('content').innerHTML = `<table>
+    <thead><tr><th>Time</th><th>Action</th><th>User</th><th>Details</th></tr></thead>
+    <tbody>${state.audit.map(a => `<tr>
+      <td class="mono" style="font-size:12px;color:var(--muted)">${date(a.at)}</td>
+      <td>${badge(a.type, a.type.includes('ai') ? 'var(--purple)' : a.type.includes('login') ? 'var(--blue)' : 'var(--g)')}</td>
+      <td class="mono" style="font-size:12px;color:var(--muted)">${esc(a.email || '-')}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${esc(JSON.stringify(a.details || {}))}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
 }
-async function toggleUser(id, active){
-  await fetch('/api/admin/users/' + encodeURIComponent(id), { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ active: !active }) });
+
+async function toggleUser(id, active) {
+  await fetch('/api/admin/users/' + encodeURIComponent(id), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active: !active })
+  });
   await loadAll();
 }
-function date(v){ return new Date(v).toLocaleString('nl-NL'); }
-function esc(v){ return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+function badge(text, color) {
+  return `<span class="badge" style="background:${color}18;border:1px solid ${color}40;color:${color}">${esc(text)}</span>`;
+}
+function date(v) { return new Date(v).toLocaleString('nl-NL'); }
+function esc(v) { return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 </script>
 </body>
 </html>

@@ -1,85 +1,159 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JMAnalyzeTool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f8f7f5;--card:#fff;--border:#e5e3df;--text:#1a1a1a;--muted:#6b7280;--blue:#2563eb;--red:#dc2626;--green:#15803d;--radius:12px}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:24px}.login-card{width:min(100%,420px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:30px 32px;box-shadow:0 12px 30px rgba(15,23,42,.06)}h1{margin:0 0 4px;color:var(--blue);font-size:28px;line-height:1.1}p{margin:0 0 22px;color:var(--muted);font-size:14px}.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:18px}.tab{border:0;background:transparent;color:var(--muted);border-radius:7px;padding:9px;font-weight:800;cursor:pointer}.tab.active{background:var(--blue);color:#fff}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}label{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;background:#fbfaf9;color:var(--text);font-size:15px;outline:none}input:focus{border-color:var(--blue)}button.primary{width:100%;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:800;font-size:15px;padding:12px 14px;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.err{min-height:20px;margin:0 0 8px;color:var(--red);font-size:13px}.ok{min-height:20px;margin:0 0 8px;color:var(--green);font-size:13px}.hint{margin-top:14px;font-size:12px;color:var(--muted);text-align:center}.hidden{display:none}@media(prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--border:#374151;--text:#f9fafb;--muted:#9ca3af}input{background:#111827}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060709;--g:#00e5a0;--g2:#00b87a;
+  --text:#f0f2fa;--muted:#4a5070;
+  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);
+  --glass:rgba(255,255,255,.03);
+  --red:#ff4757;--green:#00e5a0;--blue:#60a5fa;
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.syne{font-family:'Syne',sans-serif;font-weight:800}
+/* noise */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.025;pointer-events:none;z-index:100}
+/* mesh */
+.mesh{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.mesh-1{position:absolute;top:-20%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse,rgba(0,229,160,.14) 0%,transparent 70%);filter:blur(60px)}
+.mesh-2{position:absolute;bottom:-20%;right:-10%;width:55%;height:55%;background:radial-gradient(ellipse,rgba(96,165,250,.09) 0%,transparent 70%);filter:blur(80px)}
+/* grid */
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+/* layout */
+.page{min-height:100vh;display:grid;place-items:center;padding:24px;position:relative;z-index:1}
+.card{width:min(100%,420px);background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:16px;padding:30px}
+/* logo */
+.logo-icon{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--g),var(--blue));display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(0,229,160,.4),0 10px 30px rgba(0,0,0,.5);margin:0 auto 14px}
+.logo-icon svg{display:block}
+.logo-text{font-size:26px;letter-spacing:-.04em;text-align:center;margin-bottom:5px}
+.logo-sub{color:var(--muted);font-size:13px;text-align:center;margin-bottom:28px}
+/* tabs */
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:rgba(255,255,255,.04);border-radius:11px;padding:3px;margin-bottom:22px}
+.tab{border:none;border-radius:9px;padding:9px 0;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;transition:all .2s}
+.tab.active{background:linear-gradient(135deg,var(--g),var(--g2));color:#020c07;box-shadow:0 2px 12px rgba(0,229,160,.4)}
+.tab:not(.active){background:transparent;color:var(--muted)}
+/* form */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:7px}
+.field input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text);border-radius:10px;padding:11px 14px;font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--g)}
+/* button */
+.btn-primary{width:100%;border:none;border-radius:10px;background:var(--g);color:#020c07;padding:13px 0;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(0,229,160,.35),0 4px 12px rgba(0,0,0,.4);transition:all .2s;letter-spacing:-.01em}
+.btn-primary:hover{box-shadow:0 0 36px rgba(0,229,160,.55),0 6px 20px rgba(0,0,0,.5);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+/* messages */
+.msg{min-height:20px;margin-bottom:10px;font-size:13px}
+.msg.err{color:var(--red)}
+.msg.ok{color:var(--green)}
+/* hint */
+.hint{text-align:center;color:rgba(255,255,255,.18);font-size:12px;margin-top:20px}
+.hidden{display:none}
 </style>
 </head>
 <body>
-  <main class="login-card">
-    <h1>JMAnalyzeTool</h1>
-    <p>Productie-analyse met beveiligde accounts en opgeslagen rapporten.</p>
-    <div class="tabs">
-      <button class="tab active" id="tab-login">Inloggen</button>
-      <button class="tab" id="tab-register">Create account</button>
+<div class="mesh"><div class="mesh-1"></div><div class="mesh-2"></div></div>
+<div class="grid-bg"></div>
+
+<main class="page">
+  <div style="width:min(100%,420px);position:relative;z-index:1">
+    <div class="logo-icon">
+      <svg width="26" height="26" viewBox="0 0 16 16" fill="none">
+        <polyline points="1,12 5,7 8,10 11,4 15,7" stroke="#020c07" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="syne logo-text">JM<span style="color:var(--g)">Analyze</span>Tool</div>
+    <div class="logo-sub">Production analysis · Secure accounts</div>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab active" id="tab-login">Log in</button>
+        <button class="tab" id="tab-register">Create account</button>
+      </div>
+
+      <section id="login-form">
+        <div class="field"><label for="login-email">Email</label><input id="login-email" type="email" autocomplete="username" placeholder="name@company.com"></div>
+        <div class="field"><label for="login-pass">Password</label><input id="login-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+        <div id="login-msg" class="msg err"></div>
+        <button class="btn-primary" id="login-btn">Log in →</button>
+      </section>
+
+      <section id="register-form" class="hidden">
+        <div class="field"><label for="reg-name">Name</label><input id="reg-name" autocomplete="name" placeholder="John Smith"></div>
+        <div class="field"><label for="reg-email">Email</label><input id="reg-email" type="email" autocomplete="username" placeholder="name@company.com"></div>
+        <div class="field"><label for="reg-location">Site / team</label><input id="reg-location" placeholder="e.g. Winschoten, Excellent team"></div>
+        <div class="field"><label for="reg-pass">Password</label><input id="reg-pass" type="password" autocomplete="new-password" placeholder="Minimum 8 characters"></div>
+        <div class="field"><label for="reg-code">Unique account code</label><input id="reg-code" autocomplete="off" placeholder="••••••"></div>
+        <div id="reg-msg" class="msg err"></div>
+        <button class="btn-primary" id="register-btn">Create account →</button>
+      </section>
     </div>
 
-    <section id="login-form">
-      <div class="field"><label for="login-email">E-mail</label><input id="login-email" type="email" autocomplete="username"></div>
-      <div class="field"><label for="login-pass">Wachtwoord</label><input id="login-pass" type="password" autocomplete="current-password"></div>
-      <div id="login-msg" class="err"></div>
-      <button class="primary" id="login-btn">Inloggen</button>
-    </section>
+    <div class="hint">Accounts can only be created with your unique code.</div>
+  </div>
+</main>
 
-    <section id="register-form" class="hidden">
-      <div class="field"><label for="reg-name">Naam</label><input id="reg-name" autocomplete="name"></div>
-      <div class="field"><label for="reg-email">E-mail</label><input id="reg-email" type="email" autocomplete="username"></div>
-      <div class="field"><label for="reg-location">Vestiging / team</label><input id="reg-location" placeholder="Bijv. Winschoten, Excellent team"></div>
-      <div class="field"><label for="reg-pass">Wachtwoord</label><input id="reg-pass" type="password" autocomplete="new-password"></div>
-      <div class="field"><label for="reg-code">Unieke accountcode</label><input id="reg-code" autocomplete="off"></div>
-      <div id="reg-msg" class="err"></div>
-      <button class="primary" id="register-btn">Account maken</button>
-    </section>
-    <div class="hint">Accounts kunnen alleen worden aangemaakt met jouw unieke code.</div>
-  </main>
 <script>
 const $ = id => document.getElementById(id);
 const tokenKey = 'jm-token';
 const userKey = 'jm-user';
-function show(mode){
-  $('tab-login').classList.toggle('active', mode==='login');
-  $('tab-register').classList.toggle('active', mode==='register');
-  $('login-form').classList.toggle('hidden', mode!=='login');
-  $('register-form').classList.toggle('hidden', mode!=='register');
+
+function show(mode) {
+  $('tab-login').classList.toggle('active', mode === 'login');
+  $('tab-register').classList.toggle('active', mode === 'register');
+  $('login-form').classList.toggle('hidden', mode !== 'login');
+  $('register-form').classList.toggle('hidden', mode !== 'register');
 }
-async function api(url, body){
-  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+
+async function api(url, body) {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
-  if(!res.ok) throw new Error(data.error || 'Actie mislukt.');
+  if (!res.ok) throw new Error(data.error || 'Action failed.');
   return data;
 }
-function saveSession(data){
+
+function saveSession(data) {
   localStorage.setItem(tokenKey, data.token);
   localStorage.setItem(userKey, JSON.stringify(data.user));
   window.location.href = '/report';
 }
-async function login(){
-  $('login-msg').textContent=''; $('login-btn').disabled=true;
-  try{ saveSession(await api('/api/auth/login', { email:$('login-email').value, password:$('login-pass').value })); }
-  catch(e){ $('login-msg').textContent=e.message; }
-  finally{ $('login-btn').disabled=false; }
+
+async function login() {
+  $('login-msg').textContent = '';
+  $('login-btn').disabled = true;
+  try { saveSession(await api('/api/auth/login', { email: $('login-email').value, password: $('login-pass').value })); }
+  catch (e) { $('login-msg').textContent = e.message; }
+  finally { $('login-btn').disabled = false; }
 }
-async function register(){
-  $('reg-msg').className='err'; $('reg-msg').textContent=''; $('register-btn').disabled=true;
-  try{
-    await api('/api/auth/register', { name:$('reg-name').value, email:$('reg-email').value, location:$('reg-location').value, password:$('reg-pass').value, inviteCode:$('reg-code').value });
-    $('reg-msg').className='ok'; $('reg-msg').textContent='Account gemaakt. Je kunt nu inloggen.';
+
+async function register() {
+  $('reg-msg').className = 'msg err';
+  $('reg-msg').textContent = '';
+  $('register-btn').disabled = true;
+  try {
+    await api('/api/auth/register', { name: $('reg-name').value, email: $('reg-email').value, location: $('reg-location').value, password: $('reg-pass').value, inviteCode: $('reg-code').value });
+    $('reg-msg').className = 'msg ok';
+    $('reg-msg').textContent = 'Account created. You can now log in.';
     $('login-email').value = $('reg-email').value;
     $('login-pass').value = $('reg-pass').value;
-    setTimeout(() => show('login'), 500);
-  }catch(e){ $('reg-msg').className='err'; $('reg-msg').textContent=e.message; }
-  finally{ $('register-btn').disabled=false; }
+    setTimeout(() => show('login'), 600);
+  } catch (e) { $('reg-msg').className = 'msg err'; $('reg-msg').textContent = e.message; }
+  finally { $('register-btn').disabled = false; }
 }
-$('tab-login').onclick=()=>show('login');
-$('tab-register').onclick=()=>show('register');
-$('login-btn').onclick=login;
-$('register-btn').onclick=register;
-$('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
-$('reg-code').addEventListener('keydown', e => { if(e.key==='Enter') register(); });
-if(localStorage.getItem(tokenKey)) window.location.href='/report';
+
+$('tab-login').onclick = () => show('login');
+$('tab-register').onclick = () => show('register');
+$('login-btn').onclick = login;
+$('register-btn').onclick = register;
+$('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+$('reg-code').addEventListener('keydown', e => { if (e.key === 'Enter') register(); });
+if (localStorage.getItem(tokenKey)) window.location.href = '/report';
 </script>
 </body>
 </html>
