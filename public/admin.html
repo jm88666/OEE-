@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beheer - JMAnalyzeTool</title>
+<script src="/auth-client.js"></script>
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2128;--border:#2a2d35;--text:#e8eaf0;--muted:#8b8fa8;--green:#3ecf8e;--amber:#f59e0b;--red:#f04040;--blue:#60a5fa}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,system-ui,sans-serif}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:22px 32px;border-bottom:1px solid var(--border);background:#0b0c0f}.top h1{margin:0;font-size:24px}.top nav{display:flex;gap:10px;flex-wrap:wrap}.top a,.top button,.smallbtn{border:1px solid var(--border);background:var(--bg2);color:var(--text);border-radius:7px;padding:8px 11px;text-decoration:none;font-weight:800;cursor:pointer}.wrap{padding:24px 32px;max-width:1320px}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}.k{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900}.v{font-size:28px;font-weight:950;margin-top:6px}.tabs{display:flex;gap:8px;margin-bottom:14px}.tab{border:1px solid var(--border);background:var(--bg2);color:var(--text);border-radius:7px;padding:9px 12px;font-weight:900;cursor:pointer}.tab.active{border-color:var(--green);color:var(--green)}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid rgba(255,255,255,.07);padding:9px 10px;text-align:left;font-size:13px}th{color:var(--muted);font-size:11px;text-transform:uppercase}.muted{color:var(--muted)}.red{color:var(--red)}.green{color:var(--green)}@media(max-width:900px){.cards{grid-template-columns:1fr}.top{display:block}.top nav{margin-top:12px}.tablewrap{overflow:auto}}
+</style>
+</head>
+<body>
+<header class="top"><div><h1>Beheer</h1><div class="muted">Accounts, rapporten en gebruikskosten bewaken</div></div><nav><a href="/report">Nieuw rapport</a><a href="/my-reports">Mijn rapporten</a><button id="logout">Uitloggen</button></nav></header>
+<main class="wrap"><section class="cards" id="cards"></section><div class="tabs"><button class="tab active" data-tab="reports">Rapporten</button><button class="tab" data-tab="users">Gebruikers</button><button class="tab" data-tab="audit">Audit</button></div><section class="card tablewrap" id="content">Laden...</section></main>
+<script>
+let state = { reports: [], users: [], audit: [], me: null };
+document.getElementById('logout').onclick = () => window.jmAuth.logout();
+document.addEventListener('jm:user', async e => {
+  state.me = e.detail.user;
+  if(state.me.role !== 'admin'){ document.getElementById('content').innerHTML = '<span class="red">Geen beheerrechten.</span>'; return; }
+  await loadAll();
+});
+document.querySelectorAll('.tab').forEach(btn => btn.onclick = () => { document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(btn.dataset.tab); });
+async function get(url){ const res=await fetch(url); const data=await res.json(); if(!res.ok) throw new Error(data.error || 'Laden mislukt.'); return data; }
+async function loadAll(){
+  const [reports, users, audit] = await Promise.all([get('/api/reports'), get('/api/admin/users'), get('/api/admin/audit')]);
+  state.reports = reports.reports; state.users = users.users; state.audit = audit.audit;
+  renderCards(reports.retentionDays); render('reports');
+}
+function renderCards(days){
+  const ai = state.audit.filter(a => a.type === 'ai_report_generated').length;
+  const saved = state.audit.filter(a => a.type === 'report_saved').length;
+  document.getElementById('cards').innerHTML = card('Gebruikers', state.users.length) + card('Rapporten', state.reports.length) + card('AI calls', ai) + card('Bewaartermijn', `${days} dagen`);
+}
+function card(k,v){ return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
+function render(tab){
+  if(tab === 'reports') return reportsTable();
+  if(tab === 'users') return usersTable();
+  return auditTable();
+}
+function reportsTable(){
+  document.getElementById('content').innerHTML = `<table><thead><tr><th>Tijd</th><th>Titel</th><th>Gebruiker</th><th>Vestiging</th><th>Route</th><th>Bronnen</th><th>Verloopt</th></tr></thead><tbody>${state.reports.map(r => `<tr><td>${date(r.createdAt)}</td><td>${esc(r.title)}</td><td>${esc(r.email)}</td><td>${esc(r.location || '-')}</td><td>${esc(r.route)}</td><td>${esc((r.sources||[]).join(', '))}</td><td>${new Date(r.expiresAt).toLocaleDateString('nl-NL')}</td></tr>`).join('')}</tbody></table>`;
+}
+function usersTable(){
+  document.getElementById('content').innerHTML = `<table><thead><tr><th>Naam</th><th>E-mail</th><th>Vestiging</th><th>Rol</th><th>Status</th><th>Aangemaakt</th><th>Actie</th></tr></thead><tbody>${state.users.map(u => `<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.location || '-')}</td><td>${esc(u.role)}</td><td class="${u.active === false ? 'red' : 'green'}">${u.active === false ? 'Geblokkeerd' : 'Actief'}</td><td>${date(u.createdAt)}</td><td><button class="smallbtn" onclick="toggleUser('${u.id}', ${u.active !== false})">${u.active === false ? 'Activeren' : 'Blokkeren'}</button></td></tr>`).join('')}</tbody></table>`;
+}
+function auditTable(){
+  document.getElementById('content').innerHTML = `<table><thead><tr><th>Tijd</th><th>Actie</th><th>Gebruiker</th><th>Details</th></tr></thead><tbody>${state.audit.map(a => `<tr><td>${date(a.at)}</td><td>${esc(a.type)}</td><td>${esc(a.email || '-')}</td><td>${esc(JSON.stringify(a.details || {}))}</td></tr>`).join('')}</tbody></table>`;
+}
+async function toggleUser(id, active){
+  await fetch('/api/admin/users/' + encodeURIComponent(id), { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ active: !active }) });
+  await loadAll();
+}
+function date(v){ return new Date(v).toLocaleString('nl-NL'); }
+function esc(v){ return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+</script>
+</body>
+</html>

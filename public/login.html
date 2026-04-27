@@ -5,50 +5,81 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JMAnalyzeTool</title>
 <style>
-:root{--bg:#f8f7f5;--card:#fff;--border:#e5e3df;--text:#1a1a1a;--muted:#6b7280;--blue:#2563eb;--red:#dc2626;--radius:12px}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:24px}.login-card{width:min(100%,360px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:30px 32px;box-shadow:0 12px 30px rgba(15,23,42,.06)}h1{margin:0 0 4px;color:var(--blue);font-size:28px;line-height:1.1}p{margin:0 0 24px;color:var(--muted);font-size:14px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}label{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;background:#fbfaf9;color:var(--text);font-size:15px;outline:none}input:focus{border-color:var(--blue)}button{width:100%;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:800;font-size:15px;padding:12px 14px;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.err{min-height:20px;margin:0 0 8px;color:var(--red);font-size:13px}.hint{margin-top:14px;font-size:12px;color:var(--muted);text-align:center}@media(prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--border:#374151;--text:#f9fafb;--muted:#9ca3af}input{background:#111827}}
+:root{--bg:#f8f7f5;--card:#fff;--border:#e5e3df;--text:#1a1a1a;--muted:#6b7280;--blue:#2563eb;--red:#dc2626;--green:#15803d;--radius:12px}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:24px}.login-card{width:min(100%,420px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:30px 32px;box-shadow:0 12px 30px rgba(15,23,42,.06)}h1{margin:0 0 4px;color:var(--blue);font-size:28px;line-height:1.1}p{margin:0 0 22px;color:var(--muted);font-size:14px}.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:18px}.tab{border:0;background:transparent;color:var(--muted);border-radius:7px;padding:9px;font-weight:800;cursor:pointer}.tab.active{background:var(--blue);color:#fff}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}label{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;background:#fbfaf9;color:var(--text);font-size:15px;outline:none}input:focus{border-color:var(--blue)}button.primary{width:100%;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:800;font-size:15px;padding:12px 14px;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.err{min-height:20px;margin:0 0 8px;color:var(--red);font-size:13px}.ok{min-height:20px;margin:0 0 8px;color:var(--green);font-size:13px}.hint{margin-top:14px;font-size:12px;color:var(--muted);text-align:center}.hidden{display:none}@media(prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--border:#374151;--text:#f9fafb;--muted:#9ca3af}input{background:#111827}}
 </style>
 </head>
 <body>
   <main class="login-card">
     <h1>JMAnalyzeTool</h1>
-    <p>Inloggen vereist voor de analyseomgeving</p>
-    <div class="field">
-      <label for="user">Gebruikersnaam</label>
-      <input id="user" autocomplete="username" value="JMAnalyzeTool">
+    <p>Productie-analyse met beveiligde accounts en opgeslagen rapporten.</p>
+    <div class="tabs">
+      <button class="tab active" id="tab-login">Inloggen</button>
+      <button class="tab" id="tab-register">Create account</button>
     </div>
-    <div class="field">
-      <label for="pass">Wachtwoord</label>
-      <input id="pass" type="password" autocomplete="current-password">
-    </div>
-    <div id="err" class="err"></div>
-    <button id="login">Inloggen</button>
-    <div class="hint">Na inloggen opent automatisch de nieuwe report builder.</div>
+
+    <section id="login-form">
+      <div class="field"><label for="login-email">E-mail</label><input id="login-email" type="email" autocomplete="username"></div>
+      <div class="field"><label for="login-pass">Wachtwoord</label><input id="login-pass" type="password" autocomplete="current-password"></div>
+      <div id="login-msg" class="err"></div>
+      <button class="primary" id="login-btn">Inloggen</button>
+    </section>
+
+    <section id="register-form" class="hidden">
+      <div class="field"><label for="reg-name">Naam</label><input id="reg-name" autocomplete="name"></div>
+      <div class="field"><label for="reg-email">E-mail</label><input id="reg-email" type="email" autocomplete="username"></div>
+      <div class="field"><label for="reg-location">Vestiging / team</label><input id="reg-location" placeholder="Bijv. Winschoten, Excellent team"></div>
+      <div class="field"><label for="reg-pass">Wachtwoord</label><input id="reg-pass" type="password" autocomplete="new-password"></div>
+      <div class="field"><label for="reg-code">Unieke accountcode</label><input id="reg-code" autocomplete="off"></div>
+      <div id="reg-msg" class="err"></div>
+      <button class="primary" id="register-btn">Account maken</button>
+    </section>
+    <div class="hint">Accounts kunnen alleen worden aangemaakt met jouw unieke code.</div>
   </main>
 <script>
-const pass = document.getElementById('pass');
-const err = document.getElementById('err');
-const btn = document.getElementById('login');
-async function doLogin(){
-  err.textContent='';
-  btn.disabled=true;
-  try{
-    const res=await fetch('/api/auth-check?pass='+encodeURIComponent(pass.value));
-    const data=await res.json();
-    if(data.ok){
-      sessionStorage.setItem('jm-auth','ok');
-      window.location.href='/report';
-      return;
-    }
-    err.textContent=data.configured?'Gebruikersnaam of wachtwoord onjuist.':'Login-wachtwoord is nog niet ingesteld.';
-  }catch(e){
-    err.textContent='Login controleren lukt niet. Probeer opnieuw.';
-  }finally{
-    btn.disabled=false;
-  }
+const $ = id => document.getElementById(id);
+const tokenKey = 'jm-token';
+const userKey = 'jm-user';
+function show(mode){
+  $('tab-login').classList.toggle('active', mode==='login');
+  $('tab-register').classList.toggle('active', mode==='register');
+  $('login-form').classList.toggle('hidden', mode!=='login');
+  $('register-form').classList.toggle('hidden', mode!=='register');
 }
-btn.addEventListener('click',doLogin);
-pass.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-pass.focus();
+async function api(url, body){
+  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(data.error || 'Actie mislukt.');
+  return data;
+}
+function saveSession(data){
+  localStorage.setItem(tokenKey, data.token);
+  localStorage.setItem(userKey, JSON.stringify(data.user));
+  window.location.href = '/report';
+}
+async function login(){
+  $('login-msg').textContent=''; $('login-btn').disabled=true;
+  try{ saveSession(await api('/api/auth/login', { email:$('login-email').value, password:$('login-pass').value })); }
+  catch(e){ $('login-msg').textContent=e.message; }
+  finally{ $('login-btn').disabled=false; }
+}
+async function register(){
+  $('reg-msg').className='err'; $('reg-msg').textContent=''; $('register-btn').disabled=true;
+  try{
+    await api('/api/auth/register', { name:$('reg-name').value, email:$('reg-email').value, location:$('reg-location').value, password:$('reg-pass').value, inviteCode:$('reg-code').value });
+    $('reg-msg').className='ok'; $('reg-msg').textContent='Account gemaakt. Je kunt nu inloggen.';
+    $('login-email').value = $('reg-email').value;
+    $('login-pass').value = $('reg-pass').value;
+    setTimeout(() => show('login'), 500);
+  }catch(e){ $('reg-msg').className='err'; $('reg-msg').textContent=e.message; }
+  finally{ $('register-btn').disabled=false; }
+}
+$('tab-login').onclick=()=>show('login');
+$('tab-register').onclick=()=>show('register');
+$('login-btn').onclick=login;
+$('register-btn').onclick=register;
+$('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
+$('reg-code').addEventListener('keydown', e => { if(e.key==='Enter') register(); });
+if(localStorage.getItem(tokenKey)) window.location.href='/report';
 </script>
 </body>
 </html>
