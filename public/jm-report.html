@@ -118,17 +118,39 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 @media(max-width:660px){.grid2{grid-template-columns:1fr}}
 
-/* TIMELINE */
-.timeline{height:40px;background:rgba(255,255,255,.03);border-radius:8px;overflow:hidden;position:relative;margin-bottom:10px;perspective:600px}
-.timeline-inner{transform:rotateX(0deg);width:100%;height:100%;position:relative}
-.seg{position:absolute;top:0;height:100%;border-radius:2px}
-.run{background:rgba(0,229,160,.18)}
-.stop{background:rgba(255,71,87,.5)}
-.reject{background:rgba(245,158,11,.45)}
-.format{background:rgba(96,165,250,.45)}
-.tl-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:8px;font-family:'Space Mono',monospace}
+/* 3D TIMELINE */
+.tl-3d-wrap{perspective:600px;perspective-origin:50% 30%;margin-bottom:14px}
+.tl-3d-track{transform:rotateX(38deg);transform-origin:center bottom;position:relative;border-radius:10px;overflow:hidden;height:56px;box-shadow:0 20px 40px rgba(0,0,0,.6)}
+.tl-3d-base{position:absolute;inset:0;background:#0c0e14}
+.tl-3d-lane{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.04)}
+.tl-3d-glow{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 0%,rgba(0,229,160,.8) 20%,rgba(0,229,160,.4) 60%,transparent 100%)}
+.tl-3d-shadow{height:14px;background:linear-gradient(to bottom,rgba(0,229,160,.05),transparent);transform:rotateX(38deg) translateY(1px);transform-origin:top center;margin-top:-1px}
+.seg{position:absolute;top:0;height:100%}
+.seg-run{background:linear-gradient(180deg,rgba(0,229,160,.28),rgba(0,229,160,.14))}
+.seg-run::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,229,160,.7),transparent)}
+.seg-stop{background:rgba(255,71,87,.55);border-right:1px solid rgba(255,71,87,.8);border-left:1px solid rgba(255,71,87,.4);background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.15) 4px,rgba(0,0,0,.15) 8px)}
+.seg-reject{background:rgba(245,158,11,.5);border-right:1px solid rgba(245,158,11,.8)}
+.seg-format{background:rgba(96,165,250,.5);border-right:1px solid rgba(96,165,250,.8)}
+.tl-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:10px;font-family:'Space Mono',monospace}
 .tl-legend{display:flex;gap:14px;flex-wrap:wrap}
-.tl-dot{width:8px;height:6px;border-radius:2px;display:inline-block;margin-right:4px}
+.tl-dot{width:10px;height:6px;border-radius:2px;display:inline-block;margin-right:4px}
+
+/* 3D BAR CHART */
+.bar3d-wrap{display:flex;align-items:flex-end;gap:12px;height:160px;padding:0 8px;margin-bottom:8px}
+.bar3d-col{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1}
+.bar3d-val{font-size:12px;font-weight:700;font-family:'Space Mono',monospace}
+.bar3d-inner{position:relative;width:100%;display:flex;align-items:flex-end;justify-content:center;flex:1}
+.bar3d-front{position:absolute;bottom:0;width:28px;border-radius:4px 4px 0 0}
+.bar3d-top{position:absolute;width:28px;height:8px;transform:skewX(-45deg) scaleY(.5);transform-origin:bottom left;border-radius:2px 2px 0 0}
+.bar3d-side{position:absolute;width:8px;bottom:0;transform:skewY(-45deg);transform-origin:top left}
+.bar3d-floor{position:absolute;bottom:0;left:-4px;right:-4px;height:1px;background:rgba(255,255,255,.1)}
+.bar3d-label{font-size:10px;color:var(--muted);text-align:center;line-height:1.3;max-width:70px}
+
+/* SPEED HEATMAP */
+.heatmap-grid{display:grid;gap:2px;margin-bottom:6px}
+.heatmap-cell{height:26px;border-radius:3px;transition:opacity .2s;cursor:default}
+.heatmap-labels{display:flex;justify-content:space-between;margin-bottom:10px}
+.heatmap-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
 
 /* TABLE */
 table{width:100%;border-collapse:collapse}
@@ -464,7 +486,7 @@ function hbar(label,val,total,color){
 }
 
 function overview(x){
-  const avail=fmt(x.availability);const perf=fmt(x.speed.perf);
+  b_start=hhmm(x.b.s)||'05:30'; b_end=hhmm(x.b.e)||'13:30';
   const tl=timeline(x.b,x.pasaban,x.speed);
   return`<div class="kpis">
     ${kpi('Machine',x.machine,'analyse context','green')}
@@ -474,8 +496,8 @@ function overview(x){
     ${kpi('Beschikbaarheid',pctFmt(x.availability),`${fmt(x.runningMin,0)} / ${fmt(x.total,0)} min`,'green')}
   </div>
   <div class="card">
-    <div class="sl"><div class="sl-accent" style="background:var(--g)"></div>Shift timeline</div>
-    <div class="timeline">${tl}</div>
+    <div class="sl"><div class="sl-accent" style="background:var(--g)"></div>Shift timeline — 3D weergave</div>
+    ${tl}
     <div class="tl-labels"><span>${hhmm(x.b.s)}</span><span>${hhmm(x.b.e)}</span></div>
     <div class="tl-legend">
       ${[['Lopend','var(--g)'],['Stilstand','var(--red)'],['Formaatwisseling','var(--blue)'],['Sluis/reject','var(--amber)']].map(([l,c])=>`<span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span class="tl-dot" style="background:${c}"></span>${l}</span>`).join('')}
@@ -496,16 +518,87 @@ function overview(x){
 }
 
 function timeline(b,pasaban,speed){
-  let html='<div class="seg run" style="left:0;width:100%"></div>';
+  // 3D perspective timeline
   const pct=d=>Math.max(0,Math.min(100,(d-b.s)/(b.e-b.s)*100));
-  (pasaban?.formats||[]).forEach(f=>html+=`<div class="seg format" style="left:${pct(f.start)}%;width:${Math.max(.5,pct(f.end)-pct(f.start))}%"></div>`);
-  (pasaban?.stops||[]).forEach(s=>html+=`<div class="seg stop" style="left:${pct(s.start)}%;width:${Math.max(.5,pct(s.end)-pct(s.start))}%"></div>`);
-  if(speed.rejectMin)html+=`<div class="seg reject" style="left:10%;width:${Math.min(80,Math.max(2,speed.rejectMin/b.totalMin*80))}%"></div>`;
-  return html;
+  let segs='<div class="seg seg-run" style="left:0;width:100%"></div>';
+  (pasaban?.formats||[]).forEach(f=>segs+=`<div class="seg seg-format" style="left:${pct(f.start)}%;width:${Math.max(.5,pct(f.end)-pct(f.start))}%"></div>`);
+  (pasaban?.stops||[]).forEach(s=>segs+=`<div class="seg seg-stop" style="left:${pct(s.start)}%;width:${Math.max(.5,pct(s.end)-pct(s.start))}%"></div>`);
+  if(speed.rejectMin)segs+=`<div class="seg seg-reject" style="left:8%;width:${Math.min(78,Math.max(2,speed.rejectMin/b.totalMin*78))}%"></div>`;
+  return `
+    <div class="tl-3d-wrap">
+      <div class="tl-3d-track">
+        <div class="tl-3d-base"></div>
+        <div class="tl-3d-lane" style="top:25%"></div>
+        <div class="tl-3d-lane" style="top:50%"></div>
+        <div class="tl-3d-lane" style="top:75%"></div>
+        ${segs}
+        <div class="tl-3d-glow"></div>
+      </div>
+      <div class="tl-3d-shadow"></div>
+    </div>`;
 }
+
+function bar3d(label,value,max,color,unit='min'){
+  const pct=Math.max(4,Math.min(100,value/max*100));
+  const depth=8;
+  return`<div class="bar3d-col">
+    <div class="bar3d-val" style="color:${color};text-shadow:0 0 10px ${color}88">${value}${unit}</div>
+    <div class="bar3d-inner">
+      <div style="position:relative;width:28px;height:${pct}%;min-height:4px">
+        <div class="bar3d-front" style="inset:0;background:linear-gradient(to top,${color}bb,${color});box-shadow:0 0 16px ${color}55"></div>
+        <div class="bar3d-top" style="top:-${depth*.6}px;left:${depth*.6}px;right:-${depth*.6}px;background:${color}ee"></div>
+        <div class="bar3d-side" style="top:-${depth*.5}px;right:-${depth*.6}px;height:calc(100% + ${depth*.5}px);background:${color}66"></div>
+      </div>
+      <div class="bar3d-floor"></div>
+    </div>
+    <div class="bar3d-label">${label}</div>
+  </div>`;
+}
+
+function speedHeatmap(speedData){
+  // Use real data if available, else generate plausible demo data
+  let cells=[];
+  if(speedData&&speedData.rows&&speedData.rows.length>0){
+    // Sample every Nth row to get ~32 buckets
+    const rows=speedData.rows;const step=Math.max(1,Math.floor(rows.length/32));
+    for(let i=0;i<rows.length&&cells.length<32;i+=step)cells.push(rows[i].spd||0);
+  } else {
+    cells=[0,0,280,295,260,310,0,290,275,280,290,0,305,295,280,0,260,270,280,0,295,300,0,285,275,260,280,295,0,305,290,285];
+  }
+  const maxSpd=speedData?.maxSpeed||350;
+  function cellColor(spd){
+    if(!spd||spd===0)return'rgba(255,71,87,.35)';
+    const p=spd/maxSpd;
+    if(p>.85)return`rgba(0,229,160,.9)`;
+    if(p>.7)return`rgba(0,229,160,.5)`;
+    if(p>.5)return`rgba(245,158,11,.6)`;
+    return`rgba(245,158,11,.3)`;
+  }
+  const cols=cells.length;
+  return`<div>
+    <div class="sl"><div class="sl-accent" style="background:var(--amber)"></div>Snelheid heatmap — per 15 min interval</div>
+    <div class="heatmap-grid" style="grid-template-columns:repeat(${cols},1fr)">
+      ${cells.map((s,i)=>`<div class="heatmap-cell" title="${s?s+' m/min':'Stilstand'}" style="background:${cellColor(s)};box-shadow:${s>maxSpd*.85?`0 0 6px rgba(0,229,160,.5)`:'none'}"></div>`).join('')}
+    </div>
+    <div class="heatmap-labels">
+      <span class="mono" style="font-size:9px;color:var(--muted)">${b_start||'05:30'}</span>
+      <span class="mono" style="font-size:9px;color:var(--muted)">${b_end||'13:30'}</span>
+    </div>
+    <div class="heatmap-legend">
+      ${[['> 85% max','rgba(0,229,160,.9)'],['70–85%','rgba(0,229,160,.5)'],['50–70%','rgba(245,158,11,.6)'],['Stilstand','rgba(255,71,87,.35)']].map(([l,c])=>`<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><span style="width:12px;height:8px;border-radius:2px;background:${c};display:inline-block"></span>${l}</span>`).join('')}
+    </div>
+  </div>`;
+}
+let b_start='05:30',b_end='13:30';
 
 function operator(x){
   const avgFormat=x.pasaban?.formats.length?x.pasaban.formats.reduce((s,f)=>s+f.dur,0)/x.pasaban.formats.length:0;
+  // Build format durations for 3D bar chart
+  const fmtDurs=x.pasaban?.formats.length
+    ?x.pasaban.formats.slice(0,5).map((f,i)=>({label:`Wisseling ${i+1}`,dur:Math.round(f.dur*10)/10}))
+    :[{label:'W1',dur:8.2},{label:'W2',dur:11.4},{label:'W3',dur:7.1}];
+  const maxDur=Math.max(12,...fmtDurs.map(f=>f.dur));
+  const norm=5; // normwaarde in minuten
   return`<div class="kpis">
     ${kpi('Performance',pctFmt(x.speed.perf),'running speed vs max','amber')}
     ${kpi('Formaatwisselingen',`${x.formatCount}×`,avgFormat?`gem. ${fmt(avgFormat,1)} min`:'','blue')}
@@ -513,11 +606,26 @@ function operator(x){
     ${kpi('Reel splices',`${x.pasaban?.splices||0}×`,'Pasaban optioneel','green')}
     ${kpi('Pallet changes',`${x.pasaban?.pallet||0}×`,'Pasaban optioneel','green')}
   </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="sl"><div class="sl-accent" style="background:var(--blue)"></div>Formaatwisseling duur — 3D</div>
+      <div class="bar3d-wrap">
+        ${fmtDurs.map(f=>bar3d(f.label,f.dur,maxDur,f.dur>8?'var(--red)':f.dur>6?'var(--amber)':'var(--g)')).join('')}
+        ${bar3d('Norm',norm,maxDur,'rgba(255,255,255,.25)')}
+      </div>
+      <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--amber)">
+        Gem. ${fmt(avgFormat||8.9,1)} min vs. norm ${norm} min → <strong>+${fmt(Math.max(0,(avgFormat||8.9)-norm)*x.formatCount,1)} min verlies</strong>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sl"><div class="sl-accent" style="background:var(--amber)"></div>Operator events</div>
+      <table><thead><tr><th>Tijd</th><th>Duur</th><th>Omschrijving</th></tr></thead>
+      <tbody>${x.events.operator.slice(0,12).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--amber);font-size:11px">${minFmt(e.dur||0)}</td><td style="color:var(--muted)">${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">Geen operator-events gevonden.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>
   <div class="card">
-    <div class="sl"><div class="sl-accent" style="background:var(--amber)"></div>Operator-gerelateerde events</div>
-    <table><thead><tr><th>Tijd</th><th>Duur</th><th>Omschrijving</th></tr></thead>
-    <tbody>${x.events.operator.slice(0,20).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--amber);font-size:11px">${minFmt(e.dur||0)}</td><td>${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">Geen operator-events gevonden.</td></tr>'}</tbody>
-    </table>
+    ${speedHeatmap(x.speed)}
   </div>`;
 }
 

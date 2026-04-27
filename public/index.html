@@ -1,189 +1,200 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OEE Analyse DW08 — Metsä NL Winschoten</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <style>
-    :root {
-      --bg:#f8f7f5;--card:#fff;--border:#e5e3df;--text:#1a1a1a;--muted:#6b7280;
-      --machine:#2563EB;--operator:#B45309;--kwal:#DC2626;--sluis:#7C3AED;
-      --win:#15803D;--warn:#D97706;--r:12px;
-    }
-    @media(prefers-color-scheme:dark){
-      :root{--bg:#111827;--card:#1f2937;--border:#374151;--text:#f9fafb;--muted:#9ca3af;}
-    }
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-    /* UPLOAD */
-    #upload-screen{max-width:880px;margin:0 auto;padding:2.5rem 1rem;}
-    .uph{text-align:center;margin-bottom:2rem;}
-    .uph h1{font-size:1.85rem;font-weight:800;color:var(--machine);}
-    .uph p{color:var(--muted);margin-top:.4rem;font-size:.93rem;}
-    .uph .loc-badge{display:inline-block;background:#eff6ff;color:var(--machine);border:1px solid #bfdbfe;border-radius:99px;padding:.2rem .8rem;font-size:.78rem;font-weight:700;margin-top:.6rem;}
-    @media(prefers-color-scheme:dark){.uph .loc-badge{background:#1e3a5f;border-color:#3b82f6;}}
-    .up-grid{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;}
-    .up-grid .full{grid-column:1/-1;}
-    @media(max-width:580px){.up-grid{grid-template-columns:1fr;}.up-grid .full{grid-column:auto;}}
-    .dz{background:var(--card);border:2px dashed var(--border);border-radius:var(--r);padding:1.2rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
-    .dz:hover{border-color:var(--machine);}
-    .dz.drag-over{border-color:var(--machine);background:#eff6ff;}
-    .dz.loaded{border-color:var(--win);border-style:solid;}
-    .dz.err{border-color:var(--kwal);border-style:solid;}
-    @media(prefers-color-scheme:dark){.dz:hover,.dz.drag-over{background:#1e293b;}}
-    .dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
-    .dz-icon{font-size:1.7rem;margin-bottom:.35rem;}
-    .dz-num{display:inline-flex;align-items:center;justify-content:center;background:var(--machine);color:#fff;width:20px;height:20px;border-radius:50%;font-size:.68rem;font-weight:800;margin-right:.3rem;flex-shrink:0;}
-    .dz-title{font-weight:700;font-size:.9rem;display:flex;align-items:center;}
-    .dz-ext{font-size:.72rem;color:var(--muted);margin-top:.15rem;}
-    .dz-hint{font-size:.76rem;color:var(--muted);margin-top:.4rem;line-height:1.5;}
-    .dz-status{margin-top:.6rem;font-size:.78rem;font-weight:600;min-height:1.1em;}
-    .dz-status.ok{color:var(--win);}
-    .dz-status.bad{color:var(--kwal);}
-    .btn-go{display:block;width:100%;margin-top:1.4rem;padding:1rem 2rem;background:var(--machine);color:#fff;font-size:1rem;font-weight:700;border:none;border-radius:var(--r);cursor:pointer;letter-spacing:.02em;transition:all .2s;}
-    .btn-go:disabled{opacity:.35;cursor:not-allowed;}
-    .btn-go:not(:disabled):hover{filter:brightness(1.1);}
-    /* LOADING */
-    #loading-screen{display:none;max-width:460px;margin:0 auto;padding:5rem 1.5rem;}
-    .lh{text-align:center;margin-bottom:2rem;}
-    .spin{font-size:2rem;display:block;margin:0 auto 1.2rem;animation:spin 1.8s linear infinite;}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .lh h2{font-size:1.25rem;font-weight:700;color:var(--machine);}
-    .lh p{font-size:.85rem;color:var(--muted);margin-top:.3rem;}
-    .step-list{list-style:none;}
-    .step-item{display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid var(--border);font-size:.9rem;}
-    .step-item:last-child{border-bottom:none;}
-    .sico{width:22px;text-align:center;font-size:1rem;}
-    /* DASHBOARD */
-    #dashboard{display:none;}
-    .dsh{background:var(--machine);color:#fff;padding:.8rem 1.2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;}
-    .dsh h1{font-size:1.05rem;font-weight:800;}
-    .dsh .dmeta{font-size:.78rem;opacity:.8;}
-    .btn-back{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:.3rem .85rem;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;}
-    .tab-nav{display:flex;overflow-x:auto;background:var(--card);border-bottom:2px solid var(--border);scrollbar-width:none;}
-    .tab-nav::-webkit-scrollbar{display:none;}
-    .tab-btn{padding:.7rem .95rem;border:none;background:none;cursor:pointer;font-size:.83rem;font-weight:600;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s;}
-    .tab-btn.active{color:var(--machine);border-bottom-color:var(--machine);}
-    .tab-content{padding:1.2rem;max-width:1100px;margin:0 auto;}
-    .tab-pane{display:none;}
-    .tab-pane.active{display:block;}
-    /* KPI */
-    .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:.85rem;margin-bottom:1.2rem;}
-    .kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem;}
-    .kpi.km{border-top:3px solid var(--machine);}
-    .kpi.ko{border-top:3px solid var(--operator);}
-    .kpi.ks{border-top:3px solid var(--sluis);}
-    .kpi.kw{border-top:3px solid var(--win);}
-    .kpi-lbl{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
-    .kpi-val{font-size:1.85rem;font-weight:800;margin:.2rem 0 .1rem;}
-    .kpi-sub{font-size:.75rem;color:var(--muted);}
-    /* CARD */
-    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem;margin-bottom:.9rem;}
-    .card-title{font-size:.88rem;font-weight:700;margin-bottom:.9rem;}
-    .row2{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;}
-    @media(max-width:660px){.row2{grid-template-columns:1fr;}}
-    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem;margin-bottom:.9rem;}
-    @media(max-width:660px){.row3{grid-template-columns:1fr;}}
-    /* TABLE */
-    .tbl-wrap{overflow-x:auto;}
-    table{width:100%;border-collapse:collapse;font-size:.83rem;}
-    th{text-align:left;padding:.5rem .65rem;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap;}
-    td{padding:.48rem .65rem;border-bottom:1px solid var(--border);}
-    tr:last-child td{border-bottom:none;}
-    tr:hover td{background:rgba(0,0,0,.02);}
-    @media(prefers-color-scheme:dark){tr:hover td{background:rgba(255,255,255,.03);}}
-    /* BADGE */
-    .badge{display:inline-block;padding:.15rem .5rem;border-radius:99px;font-size:.7rem;font-weight:700;}
-    .b-h{background:#fef2f2;color:var(--kwal);}
-    .b-m{background:#fffbeb;color:var(--warn);}
-    .b-l{background:#f0fdf4;color:var(--win);}
-    @media(prefers-color-scheme:dark){.b-h{background:#450a0a;}.b-m{background:#451a03;}.b-l{background:#052e16;}}
-    /* SCORE RING */
-    .score-wrap{display:flex;align-items:center;gap:.85rem;margin-bottom:.75rem;}
-    .score-ring{width:66px;height:66px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:900;color:#fff;flex-shrink:0;}
-    .ring-m{background:var(--machine);}
-    .ring-o{background:var(--operator);}
-    .ring-k{background:var(--kwal);}
-    .score-info .si-lbl{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;}
-    .score-info .si-name{font-size:.95rem;font-weight:800;}
-    /* VERDICT */
-    .verdict{border-left:4px solid;border-radius:0 8px 8px 0;padding:.8rem .95rem;margin:.6rem 0 .9rem;font-size:.86rem;line-height:1.65;background:var(--bg);}
-    .vm{border-color:var(--machine);}
-    .vo{border-color:var(--operator);}
-    .vk{border-color:var(--kwal);}
-    .vs{border-color:var(--sluis);}
-    /* PROGRESS */
-    .prog{margin-bottom:.8rem;}
-    .prog-lbl{display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.28rem;}
-    .prog-track{height:10px;background:var(--border);border-radius:99px;overflow:hidden;position:relative;}
-    .prog-fill{height:100%;border-radius:99px;transition:width .7s ease;}
-    .prog-goal{position:absolute;top:0;bottom:0;width:2px;background:#374151;opacity:.5;}
-    /* WIN CARD */
-    .win-card{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:var(--r);padding:1.05rem;margin-bottom:.9rem;display:flex;flex-wrap:wrap;gap:1.2rem;align-items:center;}
-    @media(prefers-color-scheme:dark){.win-card{background:linear-gradient(135deg,#052e16,#14532d);border-color:#166534;}}
-    .wi .wl{font-size:.68rem;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
-    .wi .wv{font-size:1.55rem;font-weight:900;color:#15803d;}
-    .wi .ws{font-size:.75rem;color:#166534;margin-top:.08rem;}
-    /* SCENARIO STRIP */
-    .scen-strip{display:flex;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:1.4rem;}
-    .ss{flex:1;padding:.8rem .45rem;text-align:center;}
-    .ss .sl{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;opacity:.85;margin-bottom:.18rem;}
-    .ss .sv{font-size:.95rem;font-weight:800;}
-    .ss .sd{font-size:.67rem;margin-top:.12rem;opacity:.85;}
-    .ss0{background:#1e3a5f;color:#93c5fd;}
-    .ss1{background:#7C3AED;color:#ddd6fe;}
-    .ss2{background:#B45309;color:#fde68a;}
-    .ss3{background:#15803D;color:#bbf7d0;}
-    .ss4{background:#166534;color:#86efac;}
-    /* IMPROVEMENT */
-    .impr{border:1px solid var(--border);border-radius:8px;padding:.8rem;margin-bottom:.55rem;display:flex;gap:.7rem;align-items:flex-start;}
-    .ib{flex:1;}
-    .ib-title{font-size:.85rem;font-weight:700;margin-bottom:.18rem;}
-    .ib-desc{font-size:.78rem;color:var(--muted);line-height:1.5;}
-    .ib-win{font-size:.72rem;color:var(--win);font-weight:700;margin-top:.22rem;}
-    /* PROTOCOL */
-    .protocol{list-style:none;counter-reset:step;}
-    .protocol li{counter-increment:step;display:flex;gap:.7rem;align-items:flex-start;padding:.65rem 0;border-bottom:1px solid var(--border);font-size:.84rem;line-height:1.55;}
-    .protocol li:last-child{border-bottom:none;}
-    .protocol li::before{content:counter(step);min-width:24px;height:24px;border-radius:50%;background:var(--kwal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.75rem;flex-shrink:0;}
-    /* OEE FORMULA */
-    .oee-form{font-size:1.05rem;text-align:center;font-weight:700;padding:.9rem;background:var(--bg);border-radius:8px;margin-bottom:.9rem;}
-    .oee-form span{color:var(--machine);}
-    /* UTILS */
-    .c-good{color:var(--win);font-weight:700;}
-    .c-warn{color:var(--warn);font-weight:700;}
-    .c-bad{color:var(--kwal);font-weight:700;}
-    @media(max-width:580px){.tab-content{padding:.7rem;}.kpi-val{font-size:1.45rem;}}
-    /* LOGIN */
-    #s-login{max-width:400px;margin:8vh auto;padding:1.5rem;}
-    .login-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:2rem;}
-    .login-card h2{font-size:1.3rem;font-weight:800;color:var(--machine);margin-bottom:.2rem;}
-    .login-card p{font-size:.84rem;color:var(--muted);margin-bottom:1.5rem;}
-    .login-field{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.85rem;}
-    .login-field label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
-    .login-field input{padding:.6rem .8rem;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:.93rem;outline:none;transition:border-color .15s;}
-    .login-field input:focus{border-color:var(--machine);}
-    .login-err{font-size:.8rem;color:var(--kwal);min-height:1.1em;margin-bottom:.4rem;}
-    .btn-login{width:100%;padding:.75rem;background:var(--machine);color:#fff;font-size:.95rem;font-weight:700;border:none;border-radius:8px;cursor:pointer;transition:filter .2s;letter-spacing:.02em;}
-    .btn-login:hover{filter:brightness(1.1);}
-    .btn-login:disabled{opacity:.4;cursor:not-allowed;}
-    .btn-logout{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:.28rem .7rem;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600;transition:background .15s;}
-    .btn-logout:hover{background:rgba(255,255,255,.22);}
-    .opt-badge{display:inline-block;background:#eff6ff;color:var(--machine);border:1px solid #bfdbfe;border-radius:4px;font-size:.67rem;font-weight:700;padding:.05rem .35rem;vertical-align:middle;margin-left:.3rem;}
-    @media(prefers-color-scheme:dark){.opt-badge{background:#1e3a5f;border-color:#3b82f6;}}
-    /* DEMO */
-    .btn-demo{display:block;width:100%;margin-top:.65rem;padding:.7rem 2rem;background:transparent;color:var(--muted);font-size:.88rem;font-weight:600;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;transition:all .2s;letter-spacing:.01em;}
-    .btn-demo:hover{border-color:var(--warn);color:var(--warn);background:rgba(217,119,6,.05);}
-    .demo-badge{background:#D97706;color:#fff;border-radius:99px;padding:.15rem .55rem;font-size:.72rem;font-weight:800;letter-spacing:.05em;margin-left:.5rem;vertical-align:middle;}
-    .demo-banner{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:.65rem 1rem;margin-bottom:.9rem;font-size:.83rem;color:#92400e;font-weight:500;}
-    @media(prefers-color-scheme:dark){.demo-banner{background:#451a03;border-color:#92400e;color:#fde68a;}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OEE Analyse DW08 — Metsä NL Winschoten</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f8f7f5;--card:#fff;--border:#e5e3df;--text:#1a1a1a;--muted:#6b7280;
+  --machine:#2563EB;--operator:#B45309;--kwal:#DC2626;--sluis:#7C3AED;
+  --win:#15803D;--warn:#D97706;--r:12px;}
+@media(prefers-color-scheme:dark){:root{--bg:#111827;--card:#1f2937;--border:#374151;--text:#f9fafb;--muted:#9ca3af;}}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+/* LOGIN */
+#s-login{max-width:400px;margin:8vh auto;padding:1.5rem;}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:2rem;}
+.login-card h2{font-size:1.3rem;font-weight:800;color:var(--machine);margin-bottom:.2rem;}
+.login-card p{font-size:.84rem;color:var(--muted);margin-bottom:1.5rem;}
+.login-field{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.85rem;}
+.login-field label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.login-field input{padding:.6rem .8rem;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:.93rem;outline:none;transition:border-color .15s;}
+.login-field input:focus{border-color:var(--machine);}
+.login-err{font-size:.8rem;color:var(--kwal);min-height:1.1em;margin-bottom:.4rem;}
+.btn-login{width:100%;padding:.75rem;background:var(--machine);color:#fff;font-size:.95rem;font-weight:700;border:none;border-radius:8px;cursor:pointer;transition:filter .2s;}
+.btn-login:hover{filter:brightness(1.1);}
+.btn-login:disabled{opacity:.4;cursor:not-allowed;}
+/* UPLOAD */
+#upload-screen{max-width:820px;margin:0 auto;padding:2.5rem 1rem;}
+.uph{text-align:center;margin-bottom:2rem;}
+.uph h1{font-size:1.85rem;font-weight:800;color:var(--machine);}
+.uph p{color:var(--muted);margin-top:.4rem;font-size:.93rem;}
+.loc-badge{display:inline-block;background:#eff6ff;color:var(--machine);border:1px solid #bfdbfe;border-radius:99px;padding:.2rem .8rem;font-size:.78rem;font-weight:700;margin-top:.6rem;}
+@media(prefers-color-scheme:dark){.loc-badge{background:#1e3a5f;border-color:#3b82f6;}}
+.up-grid{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;}
+@media(max-width:580px){.up-grid{grid-template-columns:1fr;}}
+.dz{background:var(--card);border:2px dashed var(--border);border-radius:var(--r);padding:1.2rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;min-height:120px;}
+.dz:hover{border-color:var(--machine);}
+.dz.drag-over{border-color:var(--machine);background:#eff6ff;}
+.dz.loaded{border-color:var(--win);border-style:solid;}
+.dz.err{border-color:var(--kwal);border-style:solid;}
+@media(prefers-color-scheme:dark){.dz:hover,.dz.drag-over{background:#1e293b;}}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dz-icon{font-size:1.7rem;margin-bottom:.35rem;}
+.dz-num{display:inline-flex;align-items:center;justify-content:center;background:var(--machine);color:#fff;width:20px;height:20px;border-radius:50%;font-size:.68rem;font-weight:800;margin-right:.3rem;flex-shrink:0;}
+.dz-title{font-weight:700;font-size:.9rem;display:flex;align-items:center;}
+.dz-ext{font-size:.72rem;color:var(--muted);margin-top:.15rem;}
+.dz-hint{font-size:.76rem;color:var(--muted);margin-top:.4rem;line-height:1.5;}
+.dz-subhint{font-size:.7rem;color:var(--muted);margin-top:.25rem;font-style:italic;}
+.dz-status{margin-top:.6rem;font-size:.78rem;font-weight:600;min-height:1.1em;}
+.dz-status.ok{color:var(--win);}
+.dz-status.bad{color:var(--kwal);}
+.btn-go{display:block;width:100%;margin-top:1.4rem;padding:1rem 2rem;background:var(--machine);color:#fff;font-size:1rem;font-weight:700;border:none;border-radius:var(--r);cursor:pointer;letter-spacing:.02em;transition:all .2s;}
+.btn-go:disabled{opacity:.35;cursor:not-allowed;}
+.btn-go:not(:disabled):hover{filter:brightness(1.1);}
+.btn-demo{display:block;width:100%;margin-top:.65rem;padding:.7rem 2rem;background:transparent;color:var(--muted);font-size:.88rem;font-weight:600;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;transition:all .2s;}
+.btn-demo:hover{border-color:var(--warn);color:var(--warn);}
+.demo-badge{background:#D97706;color:#fff;border-radius:99px;padding:.15rem .55rem;font-size:.72rem;font-weight:800;letter-spacing:.05em;margin-left:.5rem;vertical-align:middle;}
+.demo-banner{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:.65rem 1rem;margin-bottom:.9rem;font-size:.83rem;color:#92400e;font-weight:500;}
+@media(prefers-color-scheme:dark){.demo-banner{background:#451a03;border-color:#92400e;color:#fde68a;}}
+/* LOADING */
+#loading-screen{display:none;max-width:460px;margin:0 auto;padding:5rem 1.5rem;}
+.lh{text-align:center;margin-bottom:2rem;}
+.spin{font-size:2rem;display:block;margin:0 auto 1.2rem;animation:spin 1.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lh h2{font-size:1.25rem;font-weight:700;color:var(--machine);}
+.lh p{font-size:.85rem;color:var(--muted);margin-top:.3rem;}
+.step-list{list-style:none;}
+.step-item{display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid var(--border);font-size:.9rem;}
+.step-item:last-child{border-bottom:none;}
+.sico{width:22px;text-align:center;font-size:1rem;}
+/* DASHBOARD */
+#dashboard{display:none;}
+.dsh{background:var(--machine);color:#fff;padding:.8rem 1.2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;}
+.dsh h1{font-size:1.05rem;font-weight:800;}
+.dsh .dmeta{font-size:.78rem;opacity:.8;}
+.btn-back{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:.3rem .85rem;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;}
+.btn-logout{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:.28rem .7rem;border-radius:6px;cursor:pointer;font-size:.75rem;font-weight:600;}
+.tab-nav{display:flex;overflow-x:auto;background:var(--card);border-bottom:2px solid var(--border);scrollbar-width:none;}
+.tab-nav::-webkit-scrollbar{display:none;}
+.tab-btn{padding:.7rem .95rem;border:none;background:none;cursor:pointer;font-size:.83rem;font-weight:600;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s;}
+.tab-btn.active{color:var(--machine);border-bottom-color:var(--machine);}
+.tab-content{padding:1.2rem;max-width:1100px;margin:0 auto;}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:.85rem;margin-bottom:1.2rem;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem;}
+.kpi.km{border-top:3px solid var(--machine);}
+.kpi.ko{border-top:3px solid var(--operator);}
+.kpi.ks{border-top:3px solid var(--sluis);}
+.kpi.kw{border-top:3px solid var(--win);}
+.kpi-lbl{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.kpi-val{font-size:1.85rem;font-weight:800;margin:.2rem 0 .1rem;}
+.kpi-sub{font-size:.75rem;color:var(--muted);}
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem;margin-bottom:.9rem;}
+.card-title{font-size:.88rem;font-weight:700;margin-bottom:.9rem;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;}
+@media(max-width:660px){.row2{grid-template-columns:1fr;}}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem;margin-bottom:.9rem;}
+@media(max-width:660px){.row3{grid-template-columns:1fr;}}
+/* TABLE */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.83rem;}
+th{text-align:left;padding:.5rem .65rem;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap;}
+td{padding:.48rem .65rem;border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(0,0,0,.02);}
+/* BADGE */
+.badge{display:inline-block;padding:.15rem .5rem;border-radius:99px;font-size:.7rem;font-weight:700;}
+.b-h{background:#fef2f2;color:var(--kwal);}
+.b-m{background:#fffbeb;color:var(--warn);}
+.b-l{background:#f0fdf4;color:var(--win);}
+@media(prefers-color-scheme:dark){.b-h{background:#450a0a;}.b-m{background:#451a03;}.b-l{background:#052e16;}}
+/* SCORE RING */
+.score-wrap{display:flex;align-items:center;gap:.85rem;margin-bottom:.75rem;}
+.score-ring{width:66px;height:66px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:900;color:#fff;flex-shrink:0;}
+.ring-m{background:var(--machine);}
+.ring-o{background:var(--operator);}
+.ring-k{background:var(--kwal);}
+.score-info .si-lbl{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;}
+.score-info .si-name{font-size:.95rem;font-weight:800;}
+/* VERDICT */
+.verdict{border-left:4px solid;border-radius:0 8px 8px 0;padding:.8rem .95rem;margin:.6rem 0 .9rem;font-size:.86rem;line-height:1.65;background:var(--bg);}
+.vm{border-color:var(--machine);}
+.vo{border-color:var(--operator);}
+.vk{border-color:var(--kwal);}
+.vs{border-color:var(--sluis);}
+/* PROGRESS */
+.prog{margin-bottom:.8rem;}
+.prog-lbl{display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.28rem;}
+.prog-track{height:10px;background:var(--border);border-radius:99px;overflow:hidden;position:relative;}
+.prog-fill{height:100%;border-radius:99px;transition:width .7s ease;}
+.prog-goal{position:absolute;top:0;bottom:0;width:2px;background:#374151;opacity:.5;}
+/* WIN CARD */
+.win-card{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:var(--r);padding:1.05rem;margin-bottom:.9rem;display:flex;flex-wrap:wrap;gap:1.2rem;align-items:center;}
+@media(prefers-color-scheme:dark){.win-card{background:linear-gradient(135deg,#052e16,#14532d);border-color:#166534;}}
+.wi .wl{font-size:.68rem;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.wi .wv{font-size:1.55rem;font-weight:900;color:#15803d;}
+.wi .ws{font-size:.75rem;color:#166534;margin-top:.08rem;}
+/* SCENARIO STRIP */
+.scen-strip{display:flex;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:1.4rem;}
+.ss{flex:1;padding:.8rem .45rem;text-align:center;}
+.ss .sl{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;opacity:.85;margin-bottom:.18rem;}
+.ss .sv{font-size:.95rem;font-weight:800;}
+.ss .sd{font-size:.67rem;margin-top:.12rem;opacity:.85;}
+.ss0{background:#1e3a5f;color:#93c5fd;}
+.ss1{background:#7C3AED;color:#ddd6fe;}
+.ss2{background:#B45309;color:#fde68a;}
+.ss3{background:#15803D;color:#bbf7d0;}
+.ss4{background:#166534;color:#86efac;}
+/* IMPROVEMENT */
+.impr{border:1px solid var(--border);border-radius:8px;padding:.8rem;margin-bottom:.55rem;display:flex;gap:.7rem;align-items:flex-start;}
+.ib{flex:1;}
+.ib-title{font-size:.85rem;font-weight:700;margin-bottom:.18rem;}
+.ib-desc{font-size:.78rem;color:var(--muted);line-height:1.5;}
+.ib-win{font-size:.72rem;color:var(--win);font-weight:700;margin-top:.22rem;}
+/* PROTOCOL */
+.protocol{list-style:none;counter-reset:step;}
+.protocol li{counter-increment:step;display:flex;gap:.7rem;align-items:flex-start;padding:.65rem 0;border-bottom:1px solid var(--border);font-size:.84rem;line-height:1.55;}
+.protocol li:last-child{border-bottom:none;}
+.protocol li::before{content:counter(step);min-width:24px;height:24px;border-radius:50%;background:var(--kwal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.75rem;flex-shrink:0;}
+/* OEE FORMULA */
+.oee-form{font-size:1.05rem;text-align:center;font-weight:700;padding:.9rem;background:var(--bg);border-radius:8px;margin-bottom:.9rem;}
+.oee-form span{color:var(--machine);}
+/* ORDER CARDS */
+.order-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem;margin-bottom:1rem;}
+.oc{border:2px solid var(--border);border-radius:var(--r);background:var(--card);cursor:pointer;transition:box-shadow .15s;}
+.oc:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);}
+.oc-groen{border-color:var(--win);}
+.oc-geel{border-color:var(--warn);}
+.oc-rood{border-color:var(--kwal);}
+.oc-paars{border-color:var(--sluis);}
+.oc-head{padding:.75rem .9rem;display:flex;align-items:center;gap:.6rem;}
+.oc-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.oc-dot-groen{background:var(--win);}
+.oc-dot-geel{background:var(--warn);}
+.oc-dot-rood{background:var(--kwal);}
+.oc-dot-paars{background:var(--sluis);}
+.oc-order{font-weight:800;font-size:.92rem;}
+.oc-prod{font-size:.74rem;color:var(--muted);}
+.oc-metrics{margin-left:auto;text-align:right;font-size:.76rem;}
+.oc-detail{display:none;padding:.75rem .9rem;border-top:1px solid var(--border);font-size:.8rem;line-height:1.8;}
+.oc-open .oc-detail{display:block;}
+/* UTILS */
+.c-good{color:var(--win);font-weight:700;}
+.c-warn{color:var(--warn);font-weight:700;}
+.c-bad{color:var(--kwal);font-weight:700;}
+.c-muted{color:var(--muted);}
+@media(max-width:580px){.tab-content{padding:.7rem;}.kpi-val{font-size:1.45rem;}}
+</style>
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
+<!-- LOGIN -->
 <div id="s-login">
   <div class="login-card">
     <h2>OEE Analyse DW08</h2>
@@ -201,60 +212,53 @@
   </div>
 </div>
 
-<!-- UPLOAD SCREEN -->
+<!-- UPLOAD -->
 <div id="upload-screen" style="display:none">
   <div class="uph">
     <h1>OEE Analyse DW08</h1>
-    <p>Upload vijf rapporten voor een complete AI-gestuurde shift-analyse</p>
+    <p>Upload 4 rapporten voor een complete AI-gestuurde shift-analyse</p>
     <span class="loc-badge">Metsä NL Winschoten · Shift 07:00–15:30</span>
   </div>
   <div class="up-grid">
-    <div class="dz" id="dz-oee" ondrop="onDrop(event,'oee')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
-      <input type="file" accept=".xlsx,.xls,.csv" onchange="onFileSelect(event,'oee')">
-      <div class="dz-icon">📊</div>
-      <div class="dz-title"><span class="dz-num">1</span>&nbsp;OEE Rapport</div>
-      <div class="dz-ext">.xlsx / .xls / .csv</div>
-      <div class="dz-hint">OEE Detail Rapport export uit PROMs — NT Rate, PL Rate, Handling Rate, stilstand</div>
-      <div class="dz-status" id="st-oee">Sleep hier of klik om te kiezen</div>
+    <div class="dz" id="dz-loadlist" ondrop="onDrop(event,'loadlist')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
+      <input type="file" accept=".xls,.xlsx" onchange="onFileSelect(event,'loadlist')">
+      <div class="dz-icon">📦</div>
+      <div class="dz-title"><span class="dz-num">1</span>&nbsp;LoadList — Cortec</div>
+      <div class="dz-ext">.xls / .xlsx</div>
+      <div class="dz-hint">Orders, meters, tonnen</div>
+      <div class="dz-status" id="st-loadlist">Sleep hier of klik om te kiezen</div>
     </div>
-    <div class="dz" id="dz-sluis" ondrop="onDrop(event,'sluis')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
-      <input type="file" accept=".xlsx,.xls,.csv" onchange="onFileSelect(event,'sluis')">
-      <div class="dz-icon">🚦</div>
-      <div class="dz-title"><span class="dz-num">2</span>&nbsp;Sluis Rapport</div>
-      <div class="dz-ext">.xlsx / .xls / .csv</div>
-      <div class="dz-hint">Sluis open rapport uit PROMs — RunFactor, NoSluisFactor, sluis-downtime events</div>
-      <div class="dz-status" id="st-sluis">Sleep hier of klik om te kiezen</div>
-    </div>
-    <div class="dz" id="dz-sense" ondrop="onDrop(event,'sense')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
-      <input type="file" accept=".csv" onchange="onFileSelect(event,'sense')">
-      <div class="dz-icon">📈</div>
-      <div class="dz-title"><span class="dz-num">3</span>&nbsp;SenSe Snelheden</div>
-      <div class="dz-ext">.csv (puntkomma-gescheiden, komma als decimaal)</div>
-      <div class="dz-hint">Machinesnelheid per 15 sec — Linespeed, maxSpeed, RejectgateOpen, AlarmGeneral</div>
-      <div class="dz-status" id="st-sense">Sleep hier of klik om te kiezen</div>
+    <div class="dz" id="dz-values" ondrop="onDrop(event,'values')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
+      <input type="file" accept=".csv" onchange="onFileSelect(event,'values')">
+      <div class="dz-icon">⚡</div>
+      <div class="dz-title"><span class="dz-num">2</span>&nbsp;Snelheid &amp; alarmen — PROMs</div>
+      <div class="dz-ext">.csv</div>
+      <div class="dz-hint">Snelheid per 15 sec, alarmcodes</div>
+      <div class="dz-status" id="st-values">Sleep hier of klik om te kiezen</div>
     </div>
     <div class="dz" id="dz-events" ondrop="onDrop(event,'events')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
-      <input type="file" accept=".xlsx,.xls" onchange="onFileSelect(event,'events')">
-      <div class="dz-icon">⚡</div>
-      <div class="dz-title"><span class="dz-num">4</span>&nbsp;Events &amp; Alarmen</div>
+      <input type="file" accept=".xlsx" onchange="onFileSelect(event,'events')">
+      <div class="dz-icon">📋</div>
+      <div class="dz-title"><span class="dz-num">3</span>&nbsp;Events &amp; stilstand — PROMs</div>
       <div class="dz-ext">.xlsx</div>
-      <div class="dz-hint">PROMs Default Template — alle stilstand events met categoriepad en commentaar</div>
+      <div class="dz-hint">Stilstand events, commentaar operator</div>
       <div class="dz-status" id="st-events">Sleep hier of klik om te kiezen</div>
     </div>
-    <div class="dz full" id="dz-loadlist" ondrop="onDrop(event,'loadlist')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
-      <input type="file" accept=".xlsx,.xls" onchange="onFileSelect(event,'loadlist')">
-      <div class="dz-icon">📦</div>
-      <div class="dz-title"><span class="dz-num">5</span>&nbsp;Orders &amp; Tonnen <span class="opt-badge">optioneel</span></div>
-      <div class="dz-ext">.xls / .xlsx</div>
-      <div class="dz-hint">LoadList export — orders van de dag, gesneden meters, tonnen, ton/uur per order. Niet vereist voor potentieel berekening.</div>
-      <div class="dz-status" id="st-loadlist">Optioneel — sleep hier of klik om te kiezen</div>
+    <div class="dz" id="dz-oeesluis" ondrop="onDrop(event,'oeesluis')" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
+      <input type="file" accept=".csv,.png,.jpg,.jpeg" onchange="onFileSelect(event,'oeesluis')">
+      <div class="dz-icon">📊</div>
+      <div class="dz-title"><span class="dz-num">4</span>&nbsp;OEE + Sluis rapport — PROMs</div>
+      <div class="dz-ext">.csv / .png / .jpg / .jpeg</div>
+      <div class="dz-hint">Sleep hier een CSV of screenshot</div>
+      <div class="dz-subhint">CSV export of printscreen van beide rapporten</div>
+      <div class="dz-status" id="st-oeesluis">Sleep hier of klik om te kiezen</div>
     </div>
   </div>
   <button class="btn-go" id="btn-go" disabled onclick="startAnalysis()">Analyseer shift →</button>
-  <button class="btn-demo" onclick="startDemo()">Bekijk demo rapport →</button>
+  <button class="btn-demo" onclick="startDemo()">Bekijk demo rapport → <span class="demo-badge">DEMO</span></button>
 </div>
 
-<!-- LOADING SCREEN -->
+<!-- LOADING -->
 <div id="loading-screen">
   <div class="lh">
     <span class="spin">⚙️</span>
@@ -262,13 +266,13 @@
     <p>Even geduld, alle data wordt verwerkt</p>
   </div>
   <ul class="step-list">
-    <li class="step-item" id="step-0"><span class="sico">⏳</span>OEE rapport inlezen</li>
-    <li class="step-item" id="step-1"><span class="sico">⏳</span>Sluis rapport inlezen</li>
-    <li class="step-item" id="step-2"><span class="sico">⏳</span>SenSe snelheidsdata verwerken</li>
-    <li class="step-item" id="step-3"><span class="sico">⏳</span>Events &amp; alarmen inlezen</li>
-    <li class="step-item" id="step-4"><span class="sico">⏳</span>Orders &amp; tonnen inlezen</li>
-    <li class="step-item" id="step-5"><span class="sico">⏳</span>OEE berekenen</li>
-    <li class="step-item" id="step-6"><span class="sico">⏳</span>AI analyseert alle data</li>
+    <li class="step-item" id="step-0"><span class="sico">⏳</span>LoadList inlezen (orders + tonnen)</li>
+    <li class="step-item" id="step-1"><span class="sico">⏳</span>Snelheidsdata verwerken (values.csv)</li>
+    <li class="step-item" id="step-2"><span class="sico">⏳</span>Events inlezen (stilstand categorieën)</li>
+    <li class="step-item" id="step-3"><span class="sico">⏳</span>OEE rapport verwerken (CSV of screenshot)</li>
+    <li class="step-item" id="step-4"><span class="sico">⏳</span>OEE berekenen (B × P × K)</li>
+    <li class="step-item" id="step-5"><span class="sico">⏳</span>Prestatie per order analyseren</li>
+    <li class="step-item" id="step-6"><span class="sico">⏳</span>AI analyseert patronen en verbeterpunten</li>
     <li class="step-item" id="step-7"><span class="sico">⏳</span>Dashboard opbouwen</li>
   </ul>
 </div>
@@ -284,12 +288,12 @@
   <nav class="tab-nav">
     <button class="tab-btn active" onclick="switchTab(0)">📊 Overzicht</button>
     <button class="tab-btn" onclick="switchTab(1)">🚀 Potentieel</button>
-    <button class="tab-btn" onclick="switchTab(2)">📉 OEE</button>
-    <button class="tab-btn" onclick="switchTab(3)">🚦 Sluis</button>
-    <button class="tab-btn" onclick="switchTab(4)">⚙️ Machine</button>
-    <button class="tab-btn" onclick="switchTab(5)">👷 Operator</button>
-    <button class="tab-btn" onclick="switchTab(6)">✅ Kwaliteit</button>
-    <button class="tab-btn" onclick="switchTab(7)">📦 Orders &amp; Snelheid</button>
+    <button class="tab-btn" onclick="switchTab(2)">📦 Orders &amp; prestatie</button>
+    <button class="tab-btn" onclick="switchTab(3)">📉 OEE</button>
+    <button class="tab-btn" onclick="switchTab(4)">🚦 Sluis</button>
+    <button class="tab-btn" onclick="switchTab(5)">⚙️ Machine</button>
+    <button class="tab-btn" onclick="switchTab(6)">👷 Operator</button>
+    <button class="tab-btn" onclick="switchTab(7)">✅ Kwaliteit</button>
   </nav>
   <div class="tab-content">
     <div class="demo-banner" id="demo-banner" style="display:none">📋 Dit is een demorapport met voorbeelddata — geen echte shift data</div>
@@ -306,52 +310,77 @@
 
 <script>
 // ══ STATE ══
-const STATE={files:{oee:null,sluis:null,sense:null,events:null,loadlist:null},parsed:{oee:null,sluis:null,sense:null,events:null,loadlist:null},calc:null,pot:null,ai:null,orderPot:null,opstartAnalyse:null};
+const STATE={
+  files:{loadlist:null,values:null,events:null,oeesluis:null},
+  parsed:{loadlist:null,values:null,events:null,oeesluis:null},
+  calc:null,pot:null,ai:null,orderPrestatie:null,opstartAnalyse:null
+};
 const CHARTS={};
 const SHIFT_MIN=510;
 const C={machine:'#2563EB',operator:'#B45309',kwal:'#DC2626',sluis:'#7C3AED',win:'#15803D',warn:'#D97706',neutral:'#9CA3AF'};
 
 // ══ SPEED CURVE ══
-const speedCurve=[[300,100],[400,130],[500,180],[600,270],[700,320],[750,335],[800,350],[900,350],[1000,350],[1100,340],[1200,320],[1300,300],[1400,285],[1500,275],[1600,270]];
-function maxSpeedForOrder(size_mm){
-  if(size_mm<=300)return 100;
-  if(size_mm>=1600)return 270;
-  for(let i=0;i<speedCurve.length-1;i++){
-    if(speedCurve[i][0]<=size_mm&&size_mm<=speedCurve[i+1][0]){
-      const t=(size_mm-speedCurve[i][0])/(speedCurve[i+1][0]-speedCurve[i][0]);
-      return speedCurve[i][1]+t*(speedCurve[i+1][1]-speedCurve[i][1]);
+const SPEED_CURVE=[[300,100],[400,130],[500,180],[600,270],[700,320],[750,335],[800,350],[900,350],[1000,350],[1100,340],[1200,320],[1300,300],[1400,285],[1500,275],[1600,270]];
+function maxSpeedForOrder(mm){
+  if(mm<=300)return 100;
+  if(mm>=1600)return 270;
+  for(let i=0;i<SPEED_CURVE.length-1;i++){
+    if(SPEED_CURVE[i][0]<=mm&&mm<=SPEED_CURVE[i+1][0]){
+      const t=(mm-SPEED_CURVE[i][0])/(SPEED_CURVE[i+1][0]-SPEED_CURVE[i][0]);
+      return SPEED_CURVE[i][1]+t*(SPEED_CURVE[i+1][1]-SPEED_CURVE[i][1]);
     }
   }
   return 350;
-}
-function xlDateStr(val){
-  if(!val&&val!==0)return'';
-  if(typeof val==='number'){const d=new Date(Math.round((val-25569)*86400*1000));return`${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${String(d.getUTCFullYear()).slice(2)}`;}
-  return String(val).trim();
 }
 
 // ══ UTILS ══
 function pNum(s){if(s===null||s===undefined)return 0;if(typeof s==='number')return isNaN(s)?0:s;return parseFloat(String(s).replace(',','.').replace('%','').trim())||0;}
 function pPct(s){if(typeof s==='number')return s>1?s:s*100;const str=String(s||'');const n=pNum(s);if(str.includes('%'))return n;if(n>0&&n<=1)return n*100;return n;}
-function pDur(val){
-  if(val===null||val===undefined||val==='')return 0;
-  const s=String(val).trim();
-  if(/^\d+:\d+:\d+$/.test(s)){const[h,m,sc]=s.split(':').map(Number);return h*60+m+sc/60;}
-  if(/^\d+:\d+$/.test(s)){const[h,m]=s.split(':').map(Number);return h*60+m;}
-  const n=typeof val==='number'?val:pNum(val);
-  if(n>0&&n<3)return n*1440;
-  return n;
-}
-function xlTime(f){if(!f&&f!==0)return'--:--';const t=Math.round(f*1440);return`${String(Math.floor(t/60)%24).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;}
 function fmt(n,d=1){if(n===null||n===undefined||isNaN(n))return'-';return Number(n).toFixed(d);}
 function fPct(n){return fmt(n)+'%';}
 function fMT(n){return fmt(n,2)+' MT';}
 function fMin(n){return Math.round(n||0)+' min';}
-function mkC(id,cfg){if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];}const el=document.getElementById(id);if(!el)return;CHARTS[id]=new Chart(el,cfg);}
 function cs(c){return String(c||'').trim();}
+function mkC(id,cfg){if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];}const el=document.getElementById(id);if(!el)return;CHARTS[id]=new Chart(el,cfg);}
 function findCol(headers,...kws){return headers.findIndex(h=>kws.some(k=>cs(h).toLowerCase().includes(k.toLowerCase())));}
-function nextVal(cells,ci){for(let i=ci+1;i<cells.length;i++)if(cells[i])return cells[i];return'';}
 function wbRows(wb,si=0){const ws=wb.Sheets[wb.SheetNames[si]];if(!ws)return[];return XLSX.utils.sheet_to_json(ws,{header:1,defval:''});}
+
+// Excel date serial → "DD/MM/YY" string
+function xlDateStr(val){
+  if(!val&&val!==0)return'';
+  if(typeof val==='number'&&val>1){
+    const d=new Date(Math.round((val-25569)*86400*1000));
+    return`${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${String(d.getUTCFullYear()).slice(2)}`;
+  }
+  return String(val).trim();
+}
+// Excel time fraction → minutes since midnight
+function xlTimeMin(val){
+  if(!val&&val!==0)return-1;
+  if(typeof val==='number'&&val>=0&&val<1)return Math.round(val*1440);
+  const s=String(val).trim();
+  const m=s.match(/(\d+):(\d+)/);
+  if(m)return parseInt(m[1])*60+parseInt(m[2]);
+  return-1;
+}
+// Values CSV time "DD-MM-YYYY_HH:MM:SS" → minutes since midnight
+function valTimeMin(s){
+  const m=String(s||'').match(/_(\d+):(\d+)/);
+  if(m)return parseInt(m[1])*60+parseInt(m[2]);
+  const m2=String(s||'').match(/^(\d+):(\d+)/);
+  if(m2)return parseInt(m2[1])*60+parseInt(m2[2]);
+  return-1;
+}
+
+// Read file as latin-1 text
+function readLatin1(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.onerror=rej;
+    r.readAsText(file,'latin-1');
+  });
+}
 
 // ══ AUTH ══
 async function doLogin(){
@@ -364,21 +393,14 @@ async function doLogin(){
   try{
     const res=await fetch(`/api/auth-check?user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`);
     const data=await res.json();
-    if(data.ok){
-      sessionStorage.setItem('loggedIn','true');
-      document.getElementById('s-login').style.display='none';
-      document.getElementById('upload-screen').style.display='block';
-    } else {
-      err.textContent='Gebruikersnaam of wachtwoord onjuist.';
-    }
-  }catch(e){err.textContent='Verbindingsfout, probeer opnieuw.';}
+    if(data.ok){sessionStorage.setItem('loggedIn','true');document.getElementById('s-login').style.display='none';document.getElementById('upload-screen').style.display='block';}
+    else err.textContent='Gebruikersnaam of wachtwoord onjuist.';
+  }catch{err.textContent='Verbindingsfout, probeer opnieuw.';}
   btn.disabled=false;btn.textContent='Inloggen';
 }
 function doLogout(){
   sessionStorage.clear();
-  document.getElementById('dashboard').style.display='none';
-  document.getElementById('loading-screen').style.display='none';
-  document.getElementById('upload-screen').style.display='none';
+  ['dashboard','loading-screen','upload-screen'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('s-login').style.display='block';
   document.getElementById('demo-badge').style.display='none';
   document.getElementById('demo-banner').style.display='none';
@@ -392,119 +414,109 @@ function onDrop(e,k){e.preventDefault();e.currentTarget.classList.remove('drag-o
 function onFileSelect(e,k){const f=e.target.files[0];if(f)handleFile(f,k);}
 function handleFile(f,k){
   STATE.files[k]=f;
-  const dz=document.getElementById('dz-'+k);const st=document.getElementById('st-'+k);
+  const dz=document.getElementById('dz-'+k),st=document.getElementById('st-'+k);
   dz.classList.add('loaded');dz.classList.remove('err');
   st.className='dz-status ok';st.textContent='✓ '+f.name;
-  // Loadlist is optioneel — alleen de eerste 4 bestanden zijn verplicht
-  const required=['oee','sluis','sense','events'];
-  document.getElementById('btn-go').disabled=!required.every(k=>STATE.files[k]!==null);
+  document.getElementById('btn-go').disabled=!['loadlist','values','events','oeesluis'].every(k=>STATE.files[k]!==null);
 }
 
 // ══ STEP ══
 function setStep(i,st){
   const el=document.getElementById('step-'+i);if(!el)return;
-  const ico=el.querySelector('.sico');
-  ico.textContent=st==='done'?'✅':st==='active'?'🔄':'❌';
+  el.querySelector('.sico').textContent=st==='done'?'✅':st==='active'?'🔄':'❌';
 }
 
-// ══ PARSERS ══
-
-// OEE Rapport
-async function parseOEE(file){
-  let wb;
-  try{const ab=await file.arrayBuffer();wb=XLSX.read(new Uint8Array(ab),{type:'array'});}
-  catch{try{const t=await file.text();wb=XLSX.read(t,{type:'string'});}catch{return null;}}
-  const res={oeeHuidig:null,ntRate:null,plRate:null,handlingRate:null,speedFactor:null,notScheduledMin:0,plannedDownMin:0,opDownMin:0,stilstandCategories:[]};
-  const seen=new Set();
-  for(let si=0;si<wb.SheetNames.length;si++){
-    const rows=wbRows(wb,si);
-    rows.forEach(row=>{
-      const cells=row.map(cs);
-      for(let ci=0;ci<cells.length;ci++){
-        const lbl=cells[ci].toLowerCase();
-        const val=nextVal(cells,ci);
-        if(!val)continue;
-        if(lbl.includes('nt rate'))res.ntRate=pPct(val);
-        else if(lbl.includes('pl rate')||lbl.includes('performance rate'))res.plRate=pPct(val);
-        else if(lbl.includes('handling rate')||lbl.includes('quality rate'))res.handlingRate=pPct(val);
-        else if(lbl.includes('speed factor')&&!lbl.includes('max'))res.speedFactor=pPct(val);
-        else if((lbl==='oee'||lbl.includes('overall equipment'))&&!res.oeeHuidig)res.oeeHuidig=pPct(val);
-        else if(lbl.includes('not scheduled')||lbl.includes('niet ingepland'))res.notScheduledMin=pDur(val);
-        else if(lbl.includes('planned downtime')||lbl.includes('geplande'))res.plannedDownMin=pDur(val);
-        else if(lbl.includes('operational downtime')||lbl.includes('op. downtime'))res.opDownMin=pDur(val);
-      }
-      cells.forEach((c,ci)=>{
-        if(c.includes('>')&&c.length>5){
-          const key=c.slice(0,60);if(seen.has(key))return;
-          let aantal=0,durStr='',durMin=0,pct=0;
-          for(let di=ci+1;di<Math.min(ci+10,cells.length);di++){
-            const v=cells[di];if(!v)continue;
-            if(/^\d+$/.test(v)&&!aantal)aantal=parseInt(v);
-            else if(/\d+:\d+/.test(v)&&!durStr){durStr=v;durMin=pDur(v);}
-            else if((v.includes('%')||pNum(v)>0)&&!pct)pct=pPct(v);
-          }
-          if(durMin>0||aantal>0){seen.add(key);res.stilstandCategories.push({pad:c,aantal,duur_str:durStr,duur_min:durMin,pct});}
-        }
-      });
+// ══ PARSER 1: LoadList (Cortec .xls/.xlsx) ══
+async function parseLoadList(file){
+  const ab=await file.arrayBuffer();
+  const wb=XLSX.read(new Uint8Array(ab),{type:'array'});
+  const res={orders:[],totalNetProdM:0,totalMT:0,avgTonH:0,avgGsm:0,avgWidthMm:0,shiftDate:''};
+  const rows=wbRows(wb,0);
+  if(rows.length<4)return res;
+  // Row 2 = headers (index 2), data from row 3+
+  // Col indices per spec:
+  // 0=Mach,1=Order,2=Line,3=OrderRef,4=Customer,5=Product,6=GSM,
+  // 7=Size1,8=Size2,9=ReelWidth,10=StartDatum,11=StartTijd,12=EndDatum,13=EndTijd,
+  // 14=Time(min),15=NetUsed,16=NetProd,17=Ton/h,18=ExpUse,19=EstRun
+  const C_MACH=0,C_ORD=1,C_PROD=5,C_GSM=6,C_S1=7,C_S2=8,C_RW=9;
+  const C_SD=10,C_ST=11,C_ED=12,C_ET=13,C_TIME=14,C_NU=15,C_NP=16,C_TH=17,C_EST=19;
+  // Summary labels in col 3
+  for(let ri=3;ri<rows.length;ri++){
+    const row=rows[ri];
+    const mach=cs(row[C_MACH]);
+    const lbl=cs(row[3]).toLowerCase();
+    if(lbl.includes('av.gsm'))res.avgGsm=pNum(row[4]);
+    if(lbl.includes('av.parent')||lbl.includes('parent reel'))res.avgWidthMm=pNum(row[4]);
+    if(mach!=='DW08')continue;
+    const endDatum=cs(row[C_ED]);
+    if(!endDatum)continue; // must have end datum
+    const ordVal=cs(row[C_ORD]);
+    if(!ordVal||!/\d/.test(ordVal))continue;
+    const gsm=pNum(row[C_GSM]);
+    const s1=pNum(row[C_S1]);
+    const s2=pNum(row[C_S2]);
+    const reelWidth=pNum(row[C_RW]);
+    const vellengrootte=Math.max(s1,s2)||s1;
+    const netProd=pNum(row[C_NP])||pNum(row[C_NU]);
+    if(netProd<=0)continue;
+    const mt=(gsm&&reelWidth&&netProd)?gsm*(reelWidth/1000)*netProd/1e6:0;
+    const maxSpd=vellengrootte>0?maxSpeedForOrder(vellengrootte):350;
+    const tonH=pNum(row[C_TH]);
+    const timeMin=pNum(row[C_TIME]);
+    const estRun=pNum(row[C_EST]);
+    const startDatum=cs(row[C_SD]);
+    const startDateStr=xlDateStr(typeof row[C_SD]==='number'?row[C_SD]:row[C_SD]);
+    const endDateStr=xlDateStr(typeof row[C_ED]==='number'?row[C_ED]:row[C_ED]);
+    const startMin=xlTimeMin(row[C_ST]);
+    const endMin=xlTimeMin(row[C_ET]);
+    const actualSpd=timeMin>0?netProd/timeMin:0;
+    const speedUtil=maxSpd>0&&actualSpd>0?actualSpd/maxSpd*100:0;
+    res.orders.push({
+      order:ordVal,product:cs(row[C_PROD]),gsm,size1:s1,size2:s2,reelWidth,vellengrootte,
+      netProdM:netProd,mt,tonH,timeMin,estRun,maxSpd,actualSpd,speedUtil,
+      startDateStr,endDateStr,startMin,endMin,hasEnd:true
     });
   }
+  // Determine shift date from most common end date
+  const dc={};res.orders.forEach(o=>{if(o.endDateStr)dc[o.endDateStr]=(dc[o.endDateStr]||0)+1;});
+  res.shiftDate=Object.entries(dc).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+  res.totalNetProdM=res.orders.reduce((s,o)=>s+o.netProdM,0);
+  res.totalMT=res.orders.reduce((s,o)=>s+o.mt,0);
+  const tvs=res.orders.filter(o=>o.tonH>0).map(o=>o.tonH);
+  res.avgTonH=tvs.length?tvs.reduce((s,v)=>s+v,0)/tvs.length:0;
   return res;
 }
 
-// Sluis Rapport
-async function parseSluis(file){
-  let wb;
-  try{const ab=await file.arrayBuffer();wb=XLSX.read(new Uint8Array(ab),{type:'array'});}
-  catch{try{const t=await file.text();wb=XLSX.read(t,{type:'string'});}catch{return null;}}
-  const res={runFactor:null,noSluisFactor:null,totalSluisDowntimeMin:0,sluisEvents:[]};
-  const seen=new Set();
-  for(let si=0;si<wb.SheetNames.length;si++){
-    const rows=wbRows(wb,si);
-    rows.forEach(row=>{
-      const cells=row.map(cs);
-      for(let ci=0;ci<cells.length;ci++){
-        const lbl=cells[ci].toLowerCase();
-        const val=nextVal(cells,ci);
-        if(!val)continue;
-        if(lbl.includes('run factor')||lbl.includes('runfactor'))res.runFactor=pPct(val);
-        else if(lbl.includes('nosluis')||lbl.includes('no sluis')||lbl.includes('sluis factor'))res.noSluisFactor=pPct(val);
-      }
-      cells.forEach((c,ci)=>{
-        const cl=c.toLowerCase();
-        if((cl.includes('rejectgate')||cl.includes('rejectiongate')||cl.includes('sluis'))&&c.includes('>')){
-          const key=c.slice(0,60);if(seen.has(key))return;
-          let aantal=0,durMin=0,pct=0;
-          for(let di=ci+1;di<Math.min(ci+10,cells.length);di++){
-            const v=cells[di];if(!v)continue;
-            if(/^\d+$/.test(v)&&!aantal)aantal=parseInt(v);
-            else if(/\d+:\d+/.test(v)&&!durMin)durMin=pDur(v);
-            else if((v.includes('%')||pNum(v)>0)&&!pct)pct=pPct(v);
-          }
-          if(durMin>0||aantal>0){seen.add(key);res.sluisEvents.push({pad:c,aantal,duur_min:durMin,pct});res.totalSluisDowntimeMin+=durMin;}
-        }
-      });
-    });
-  }
-  return res;
-}
-
-// SenSe CSV
-async function parseSense(file){
+// ══ PARSER 2: Values CSV (PROMs SenSe) ══
+async function parseValues(file){
   const txt=await file.text();
   const lines=txt.split('\n').map(l=>l.trim()).filter(Boolean);
   if(lines.length<2)return null;
-  const headers=lines[0].split(';').map(h=>h.replace(/"/g,'').trim());
-  const iSpd=findCol(headers,'linespeed');
-  const iMax=findCol(headers,'maxspeed');
-  const iRG=findCol(headers,'rejectgateopen','rejectgate');
-  const iFC=findCol(headers,'formatchg','formaat');
-  const iAl=findCol(headers,'alarmgeneral','alarm');
-  const iLen=findCol(headers,'lenght','length');
+  const sep=';';
+  const headers=lines[0].split(sep).map(h=>h.replace(/"/g,'').trim());
+  function col(name){return headers.findIndex(h=>h===name);}
+  const iTime=col('time');
+  const iSpd=col('DW8 Linespeed');
+  const iMax=col('DW8 maxSpeed');
+  const iAlarm=col('DW8 AlarmGeneral');
+  const iRGC=col('DW8 RejectGateClosed');
+  const iLen=col('DW8 Lenght'); // note: typo in spec is intentional
+  const iRun=col('DW8 RunStatus');
   function pN(s){return parseFloat((s||'').replace(',','.'))||0;}
   const rows=[];
   for(let i=1;i<lines.length;i++){
-    const c=lines[i].split(';');
-    rows.push({spd:iSpd>=0?pN(c[iSpd]):0,maxSpd:iMax>=0?pN(c[iMax]):0,rg:iRG>=0?pN(c[iRG]):0,fc:iFC>=0?pN(c[iFC]):0,al:iAl>=0?pN(c[iAl]):0,len:iLen>=0?pN(c[iLen]):0});
+    const c=lines[i].split(sep);
+    const timeStr=c[iTime]||'';
+    rows.push({
+      timeStr,
+      timeMin:valTimeMin(timeStr),
+      spd:iSpd>=0?pN(c[iSpd]):0,
+      maxSpd:iMax>=0?pN(c[iMax]):0,
+      alarm:iAlarm>=0?pN(c[iAlarm]):0,
+      rgc:iRGC>=0?pN(c[iRGC]):1, // 1=closed(good), 0=open(sluis)
+      len:iLen>=0?pN(c[iLen]):0,
+      run:iRun>=0?pN(c[iRun]):0
+    });
   }
   const iM=15/60;
   const running=rows.filter(r=>r.spd>0);
@@ -513,201 +525,281 @@ async function parseSense(file){
   const avgSpd=running.length?running.reduce((s,r)=>s+r.spd,0)/running.length:0;
   const maxSet=rows.find(r=>r.maxSpd>0)?.maxSpd||350;
   const maxSeen=rows.reduce((m,r)=>Math.max(m,r.spd),0);
+  // Alarm minutes per code
   const alMap={};
-  rows.forEach(r=>{const a=Math.round(r.al);if(a>0&&a<99999){alMap[a]=(alMap[a]||0)+iM;}});
+  rows.forEach(r=>{const a=Math.round(r.alarm);if(a>0&&a<99998)alMap[a]=(alMap[a]||0)+iM;});
   const alarmMinutes=Object.entries(alMap).map(([code,min])=>({code:parseInt(code),min:Math.round(min*10)/10})).sort((a,b)=>b.min-a.min);
-  const rgMin=rows.filter(r=>r.rg>0).length*iM;
-  const rgPct=rows.length?rgMin/(rows.length*iM)*100:0;
-  const lens=rows.map(r=>r.len).filter(l=>l>0);
-  const cutM=lens.length>1?lens[lens.length-1]-lens[0]:0;
-  const fcMin=rows.filter(r=>r.fc>0).length*iM;
+  // RejectGate OPEN = rgc === 0
+  const rgOpenMin=rows.filter(r=>r.rgc===0||r.rgc==='0').length*iM;
+  const rgPct=rows.length?rgOpenMin/(rows.length*iM)*100:0;
+  // cutMeters: sum of all positive differences in DW8 Lenght (counter resets)
+  let cutMeters=0;
+  for(let i=1;i<rows.length;i++){
+    const diff=rows[i].len-rows[i-1].len;
+    if(diff>0)cutMeters+=diff;
+  }
+  // Speed distribution
   const dist={'0':0,'1-100':0,'101-200':0,'201-280':0,'281-350':0};
-  rows.forEach(r=>{if(r.spd===0)dist['0']+=iM;else if(r.spd<=100)dist['1-100']+=iM;else if(r.spd<=200)dist['101-200']+=iM;else if(r.spd<=280)dist['201-280']+=iM;else dist['281-350']+=iM;});
-  return{totalPoints:rows.length,intervalSec:15,runningMinutes:Math.round(runMin*10)/10,standstillMinutes:Math.round(standMin*10)/10,avgRunningSpeed:Math.round(avgSpd*10)/10,maxSpeedSetting:maxSet,maxSpeedSeen:maxSeen,alarmMinutes,rejectGateOpenMinutes:Math.round(rgMin*10)/10,rejectGatePct:Math.round(rgPct*10)/10,cutMeters:Math.round(cutM),formatchgActiveMinutes:Math.round(fcMin*10)/10,speedDistribution:dist};
+  rows.forEach(r=>{
+    if(r.spd===0)dist['0']+=iM;
+    else if(r.spd<=100)dist['1-100']+=iM;
+    else if(r.spd<=200)dist['101-200']+=iM;
+    else if(r.spd<=280)dist['201-280']+=iM;
+    else dist['281-350']+=iM;
+  });
+  return{
+    totalPoints:rows.length,intervalSec:15,
+    runningMinutes:Math.round(runMin*10)/10,
+    standstillMinutes:Math.round(standMin*10)/10,
+    avgRunningSpeed:Math.round(avgSpd*10)/10,
+    maxSpeedSetting:maxSet,maxSpeedSeen:maxSeen,
+    alarmMinutes,
+    rejectGateOpenMinutes:Math.round(rgOpenMin*10)/10,
+    rejectGatePct:Math.round(rgPct*10)/10,
+    cutMeters:Math.round(cutMeters),
+    speedDistribution:dist,
+    rows // keep for per-order analysis
+  };
 }
 
-// Events & Alarmen
+// ══ PARSER 3: Events XLSX (PROMs Default Template) ══
 async function parseEvents(file){
   const ab=await file.arrayBuffer();
   const wb=XLSX.read(new Uint8Array(ab),{type:'array'});
   const res={events:[],totalEvents:0,totalDurMin:0};
-  for(let si=0;si<wb.SheetNames.length;si++){
-    const rows=wbRows(wb,si);
-    let hdr=-1;
-    for(let ri=0;ri<rows.length;ri++){
-      if(rows[ri].some(c=>{const s=cs(c).toLowerCase();return s==='start'||s==='begin'||s==='duration'||s==='duur';})){hdr=ri;break;}
-    }
-    if(hdr<0)continue;
-    const headers=rows[hdr].map(cs);
-    const iSt=findCol(headers,'start','begin');
-    const iDur=findCol(headers,'duration','duur');
-    const iCom=findCol(headers,'comment','opmerking','remark');
-    const iReg=findCol(headers,'registrat','operator','created','gemaakt');
-    const lvlCols=[];
-    // Try level 5-10 first, then 2-10
-    for(let ci=0;ci<headers.length;ci++){if(/level\s*([5-9]|10)$/i.test(headers[ci]))lvlCols.push(ci);}
-    if(!lvlCols.length)for(let ci=0;ci<headers.length;ci++){if(/level\s*\d+$/i.test(headers[ci]))lvlCols.push(ci);}
-    for(let ri=hdr+1;ri<rows.length;ri++){
-      const row=rows[ri];const cells=row.map(cs);
-      const startRaw=row[iSt];if(!startRaw&&startRaw!==0)continue;
-      const durRaw=row[iDur];
-      const dur_min=typeof durRaw==='number'?durRaw*86400/60:pDur(durRaw);
-      if(dur_min<=0)continue;
-      const t=typeof startRaw==='number'?xlTime(startRaw%1):cs(startRaw).slice(0,5);
-      const cat=lvlCols.map(ci=>cells[ci]).filter(Boolean).join(' > ');
-      res.events.push({nr:ri-hdr,t,dur_min:Math.round(dur_min*10)/10,cat,comment:iCom>=0?cells[iCom]:'',registrator:iReg>=0?cells[iReg]:''});
-    }
-    if(res.events.length)break;
+  const rows=wbRows(wb,0);
+  if(!rows.length)return res;
+  // Row 0 = headers: ID|Registrator|Corrector|Date|Start|End|Duration|Comment|Path|Level2..Level11
+  const headers=rows[0].map(cs);
+  const iSt=findCol(headers,'start');
+  const iDur=findCol(headers,'duration');
+  const iCom=findCol(headers,'comment');
+  const iReg=findCol(headers,'registrator');
+  // Level columns: find Level 2 through Level 11
+  const lvlMap={};
+  headers.forEach((h,i)=>{const m=h.match(/^Level\s*(\d+)$/i);if(m)lvlMap[parseInt(m[1])]=i;});
+  const iL4=lvlMap[4];
+  for(let ri=1;ri<rows.length;ri++){
+    const row=rows[ri];
+    const cells=row.map(cs);
+    // Filter: Level 4 = 'DW 8'
+    if(iL4>=0&&cells[iL4]!=='DW 8')continue;
+    const startRaw=row[iSt];
+    if(!startRaw&&startRaw!==0)continue;
+    const durRaw=row[iDur];
+    let dur_min=0;
+    if(typeof durRaw==='number')dur_min=durRaw<3?durRaw*1440:durRaw*86400/60;
+    else{const s=String(durRaw||'').trim();if(/^\d+:\d+:\d+$/.test(s)){const[h,m,sc]=s.split(':').map(Number);dur_min=h*60+m+sc/60;}else if(/^\d+:\d+$/.test(s)){const[h,m]=s.split(':').map(Number);dur_min=h*60+m;}else dur_min=pNum(durRaw);}
+    if(dur_min<=0)continue;
+    let t='--:--';
+    if(typeof startRaw==='number'){const tm=Math.round((startRaw%1)*1440);t=`${String(Math.floor(tm/60)%24).padStart(2,'0')}:${String(tm%60).padStart(2,'0')}`;}
+    else t=cs(startRaw).slice(0,5);
+    // Category: join Level 5 through Level 11
+    const cat=Object.entries(lvlMap).filter(([n])=>parseInt(n)>=5).sort((a,b)=>a[0]-b[0]).map(([,i])=>cells[i]).filter(Boolean).join(' > ');
+    res.events.push({nr:ri,t,dur_min:Math.round(dur_min*10)/10,cat,comment:iCom>=0?cells[iCom]:'',registrator:iReg>=0?cells[iReg]:''});
   }
   res.totalEvents=res.events.length;
   res.totalDurMin=res.events.reduce((s,e)=>s+e.dur_min,0);
   return res;
 }
 
-// LoadList
-async function parseLoadList(file){
-  const ab=await file.arrayBuffer();
-  const wb=XLSX.read(new Uint8Array(ab),{type:'array'});
-  const res={orders:[],totalNetProdM:0,totalMT:0,avgTonH:0,avgGsm:0,avgWidthMm:0};
-  for(let si=0;si<wb.SheetNames.length;si++){
-    const rows=wbRows(wb,si);
-    let hdr=-1;
-    for(let ri=0;ri<rows.length;ri++){if(rows[ri].some(c=>cs(c).toLowerCase()==='order')){hdr=ri;break;}}
-    if(hdr<0)continue;
-    const headers=rows[hdr].map(cs);
-    const iOrd=findCol(headers,'order');
-    const iPrd=findCol(headers,'product','artikel');
-    const iGSM=findCol(headers,'gsm');
-    const iSz=findCol(headers,'size 1','size1','breedte','width');
-    const iSz2=findCol(headers,'size 2','size2');
-    const iNP=findCol(headers,'net prod','netprod');
-    const iNU=findCol(headers,'net used','netused');
-    const iTH=findCol(headers,'ton/h','ton/u','tonh');
-    const iTm=findCol(headers,'time','tijd');
-    const iStart=findCol(headers,'start');
-    const iEnd=findCol(headers,'end','eind');
-    const iEst=findCol(headers,'est run','estrun','est. run','est.run');
-    const iOps=findCol(headers,'opstart','startup','aanloop','oploop');
-    for(let ri=hdr+1;ri<rows.length;ri++){
-      const row=rows[ri];const cells=row.map(cs);
-      const rowStr=cells.join('|').toLowerCase();
-      if(rowStr.includes('av.gsm'))res.avgGsm=pNum(cells.find((c,i)=>i>0&&pNum(c)>0&&cells[i-1].toLowerCase().includes('gsm'))||0);
-      if(rowStr.includes('av.parent')||rowStr.includes('parent reel'))res.avgWidthMm=pNum(cells.find((c,i)=>i>0&&pNum(c)>0)||0);
-      const ordVal=iOrd>=0?cells[iOrd]:'';
-      if(!ordVal||!/\d/.test(ordVal))continue;
-      const gsm=iGSM>=0?pNum(row[iGSM]):0;
-      const widthMm=iSz>=0?pNum(row[iSz]):0;
-      const widthMm2=iSz2>=0?pNum(row[iSz2]):0;
-      const vellengrootte=Math.max(widthMm,widthMm2)||widthMm;
-      const netProdM=iNP>=0?pNum(row[iNP]):0;
-      const netUsedM=iNU>=0?pNum(row[iNU]):0;
-      const tonH=iTH>=0?pNum(row[iTH]):0;
-      const timeMin=iTm>=0?pNum(row[iTm]):0;
-      const estRun=iEst>=0?pNum(row[iEst]):0;
-      const startRaw=iStart>=0?row[iStart]:'';
-      const endRaw=iEnd>=0?row[iEnd]:'';
-      const startDateStr=xlDateStr(startRaw);
-      const hasEnd=!!(endRaw||endRaw===0)&&endRaw!=='';
-      const npM=netProdM||netUsedM;
-      if(npM<=0)continue;
-      const mt=(gsm&&widthMm&&npM)?gsm*(widthMm/1000)*npM/1e6:0;
-      const maxSpd=vellengrootte>0?maxSpeedForOrder(vellengrootte):0;
-      const actualSpd=timeMin>0?npM/timeMin:0;
-      const speedUtil=maxSpd>0&&actualSpd>0?actualSpd/maxSpd*100:0;
-      const opstart_min=iOps>=0?pNum(row[iOps]):0;
-      res.orders.push({order:ordVal,product:iPrd>=0?cells[iPrd]:'',gsm,widthMm,widthMm2,vellengrootte,netProdM:npM,mt,tonH,timeMin,estRun,maxSpd,actualSpd,speedUtil,startDateStr,hasEnd,opstart_min});
+// ══ PARSER 4: OEE + Sluis rapport (CSV of image) ══
+async function parseOEESluis(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(['png','jpg','jpeg'].includes(ext))return parseOEESluisImage(file);
+  return parseOEESluisCSV(file);
+}
+
+async function parseOEESluisImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=async e=>{
+      const b64=e.target.result.split(',')[1];
+      const mime=file.type||'image/png';
+      try{
+        const res=await fetch('/api/extract-image',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:b64,mimeType:mime})});
+        const {text}=await res.json();
+        let obj=null;
+        try{obj=JSON.parse(text);}catch{const m=text.match(/\{[\s\S]*\}/);if(m)obj=JSON.parse(m[0]);}
+        resolve(obj||{});
+      }catch(err){reject(err);}
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function parseOEESluisCSV(file){
+  const txt=await readLatin1(file);
+  const lines=txt.split('\n').map(l=>l.trim()).filter(Boolean);
+  const res={oee:null,nt_rate:null,pl_rate:null,handling_rate:null,speed_factor:null,
+    not_scheduled_min:0,planned_min:0,op_down_min:0,
+    run_factor:null,no_sluis_factor:null,norun_min:0,sluis_min:0,stilstand:[]};
+  const seen=new Set();
+  function nv(cells,ci){for(let i=ci+1;i<cells.length;i++){const v=cells[i];if(v)return v;}return'';}
+  lines.forEach(line=>{
+    const cells=line.split(';').map(s=>s.replace(/"/g,'').trim());
+    for(let ci=0;ci<cells.length;ci++){
+      const lbl=cells[ci].toLowerCase();
+      const val=nv(cells,ci);
+      if(!val)continue;
+      if(lbl==='nt rate'||lbl.includes('nt rate'))res.nt_rate=pPct(val);
+      else if(lbl==='pl rate'||lbl.includes('pl rate'))res.pl_rate=pPct(val);
+      else if(lbl.includes('handling rate'))res.handling_rate=pPct(val);
+      else if(lbl.includes('speed factor')&&!lbl.includes('max'))res.speed_factor=pPct(val);
+      else if((lbl==='oee'||lbl.includes('overall equipment'))&&res.oee===null)res.oee=pPct(val);
+      else if(lbl.includes('not scheduled')||lbl.includes('niet ingepland'))res.not_scheduled_min=pNum(val);
+      else if(lbl.includes('planned downtime')||lbl.includes('geplande'))res.planned_min=pNum(val);
+      else if(lbl.includes('operational downtime')||lbl.includes('op. downtime'))res.op_down_min=pNum(val);
+      else if(lbl.includes('run factor')||lbl==='runfactor')res.run_factor=pPct(val);
+      else if(lbl.includes('nosluis')||lbl.includes('no sluis')||lbl.includes('sluis factor'))res.no_sluis_factor=pPct(val);
+      else if(lbl.includes('norun totaal')||lbl.includes('norun_min'))res.norun_min=pNum(val);
+      else if(lbl.includes('sluis-downtime totaal')||lbl.includes('sluis_min'))res.sluis_min=pNum(val);
     }
-    if(res.orders.length)break;
-  }
-  res.totalNetProdM=res.orders.reduce((s,o)=>s+o.netProdM,0);
-  res.totalMT=res.orders.reduce((s,o)=>s+o.mt,0);
-  const tvs=res.orders.filter(o=>o.tonH>0).map(o=>o.tonH);
-  res.avgTonH=tvs.length?tvs.reduce((s,v)=>s+v,0)/tvs.length:0;
+    // Stilstand rows: cells with '/' or '>' as category path
+    cells.forEach((c,ci)=>{
+      if((c.includes('>')&&c.length>4)||(c.includes('/')&&c.length>4)){
+        const key=c.slice(0,60);if(seen.has(key))return;
+        let aantal=0,durMin=0,pct=0,omschrijving='';
+        for(let di=ci+1;di<Math.min(ci+8,cells.length);di++){
+          const v=cells[di];if(!v)continue;
+          if(!omschrijving&&v.length>4&&!pNum(v))omschrijving=v;
+          else if(/^\d+$/.test(v)&&!aantal)aantal=parseInt(v);
+          else if(/\d/.test(v)&&v.includes(':')&&!durMin){const[h,m]=v.split(':').map(Number);durMin=h*60+m;}
+          else if((v.includes('%')||pNum(v)>0)&&!pct)pct=pNum(v.replace('%',''));
+        }
+        if(durMin>0||aantal>0){
+          seen.add(key);
+          const parts=c.split(c.includes('>')?' > ':'> ');
+          const cat=parts[0]||c;
+          res.stilstand.push({cat,omschrijving:omschrijving||c,aantal,duur_min:durMin,pct});
+        }
+      }
+    });
+  });
   return res;
 }
 
 // ══ CALCULATIONS ══
 function calcOEE(parsed){
-  const oee=parsed.oee||{};const sense=parsed.sense||{};const ll=parsed.loadlist||{};
-  const notSchedMin=oee.notScheduledMin||0;
-  const planDownMin=oee.plannedDownMin||0;
-  let opDownMin=oee.opDownMin||0;
-  if(!opDownMin&&sense.standstillMinutes)opDownMin=Math.max(0,sense.standstillMinutes-planDownMin);
+  const os=parsed.oeesluis||{};
+  const vals=parsed.values||{};
+  const notSchedMin=os.not_scheduled_min||0;
+  const planDownMin=os.planned_min||0;
+  let opDownMin=os.op_down_min||0;
+  if(!opDownMin&&vals.standstillMinutes)opDownMin=Math.max(0,vals.standstillMinutes-planDownMin);
   const apt=Math.max(1,SHIFT_MIN-notSchedMin-planDownMin);
-  const maxSet=sense.maxSpeedSetting||350;const avgSpd=sense.avgRunningSpeed||0;
-  const beschikb=oee.ntRate||(apt>0?(apt-opDownMin)/apt*100:0);
-  const prestatie=oee.plRate||oee.speedFactor||(maxSet>0?avgSpd/maxSet*100:0);
-  let kwal=oee.handlingRate||0;
-  if(!kwal&&sense.cutMeters&&ll.totalNetProdM)kwal=sense.cutMeters>0?ll.totalNetProdM/sense.cutMeters*100:95;
+  const maxSet=vals.maxSpeedSetting||350;
+  const avgSpd=vals.avgRunningSpeed||0;
+  const beschikb=os.nt_rate||(apt>0?(apt-opDownMin)/apt*100:0);
+  const prestatie=os.pl_rate||os.speed_factor||(maxSet>0?avgSpd/maxSet*100:0);
+  let kwal=os.handling_rate||0;
+  if(!kwal&&vals.cutMeters&&parsed.loadlist?.totalNetProdM)kwal=vals.cutMeters>0?parsed.loadlist.totalNetProdM/vals.cutMeters*100:95;
   if(!kwal)kwal=95;
-  const oeeCalc=(beschikb/100)*(prestatie/100)*(kwal/100)*100;
   return{apt,notSchedMin,planDownMin,opDownMin,
     beschikb:Math.min(100,Math.max(0,beschikb)),
     prestatie:Math.min(100,Math.max(0,prestatie)),
     kwal:Math.min(100,Math.max(0,kwal)),
-    oee:oee.oeeHuidig||oeeCalc};
+    oee:os.oee||((beschikb/100)*(prestatie/100)*(kwal/100)*100)};
 }
 
 function calcPotential(parsed,calc){
-  const sense=parsed.sense||{};const sluis=parsed.sluis||{};const ll=parsed.loadlist||{};
-  const totalMT=ll.totalMT||0;const totalM=ll.totalNetProdM||0;
-  const hasLoadlist=totalM>0;
-  const avgSpd=sense.avgRunningSpeed||0;
-  // realTPM: uit loadlist indien beschikbaar, anders schat op basis van gsm/breedte
-  const avgGsm=ll.avgGsm||parsed.oee?.avgGsm||280;
-  const avgWidthM=(ll.avgWidthMm||parsed.oee?.avgWidthMm||1650)/1000;
+  const vals=parsed.values||{};
+  const os=parsed.oeesluis||{};
+  const ll=parsed.loadlist||{};
+  const totalMT=ll.totalMT||0;
+  const totalM=ll.totalNetProdM||0;
+  const avgSpd=vals.avgRunningSpeed||0;
+  const avgGsm=ll.avgGsm||280;
+  const avgWidthM=(ll.avgWidthMm||1650)/1000;
   const realTPM=totalM>0?totalMT/totalM:avgGsm*avgWidthM/1e6;
   const avgTonH=ll.avgTonH||Math.round(avgSpd*60*realTPM*10)/10;
-  // Snelheidsgebaseerd potentieel (altijd beschikbaar via SenSe + OEE)
   const opDownMin=calc.opDownMin||0;
+  // Potentieel per spec
+  const norunMin=os.norun_min||0;
+  const sluisMin=os.sluis_min||vals.rejectGateOpenMinutes||0;
+  const extra_m=(norunMin+sluisMin/2)*avgSpd;
+  const extra_mt=extra_m*realTPM;
+  const realistischMT=totalMT+(extra_mt*0.6);
   const extraM=Math.round(opDownMin*avgSpd);
   const extraMT=Math.round(extraM*realTPM*100)/100;
   const realistischExtraM=Math.round(opDownMin*0.6*avgSpd);
   const realistischExtraMT=Math.round(realistischExtraM*realTPM*100)/100;
-  // Traditionele scenario berekening
-  const sluisMin=sluis.totalSluisDowntimeMin||sense.rejectGateOpenMinutes||0;
   const apt=calc.apt||SHIFT_MIN;
-  const fmtEvents=(parsed.events?.events||[]).filter(e=>{const c=(e.cat||'').toLowerCase();return c.includes('formaat')||c.includes('format')||c.includes('wisseling')||c.includes('rts')||c.includes('changeover');});
-  const evLostMin=fmtEvents.reduce((s,e)=>s+(e.dur_min||0),0);
-  const s1=totalMT;
+  const fmtEvents=(parsed.events?.events||[]).filter(e=>{const c=(e.cat||'').toLowerCase();return c.includes('formaat')||c.includes('format')||c.includes('wisseling');});
+  const eGain=fmtEvents.reduce((s,e)=>s+(e.dur_min||0),0)*avgSpd*realTPM;
   const sGain=(sluisMin/2)*avgSpd*realTPM;
-  const s2=s1+sGain;
-  const eGain=evLostMin*avgSpd*realTPM;
-  const s3=s2+eGain;
-  const sp280Gain=(sense.runningMinutes||0)*Math.max(0,280-avgSpd)*realTPM;
-  const s4=s3+sp280Gain;
-  const s5=Math.max(s4,apt*350*realTPM);
+  const sp280Gain=(vals.runningMinutes||0)*Math.max(0,280-avgSpd)*realTPM;
+  const s1=totalMT;const s2=s1+sGain;const s3=s2+eGain;const s4=s3+sp280Gain;const s5=Math.max(s4,apt*350*realTPM);
   return{s1,s2,s3,s4,s5,sGain,eGain,sp280Gain,realTPM,totalMT,totalM,avgSpd,
-    hasLoadlist,opDownMin,extraM,extraMT,realistischExtraM,realistischExtraMT,avgTonH};
+    norunMin,sluisMin,opDownMin,extraM,extraMT,realistischExtraM,realistischExtraMT,avgTonH,
+    hasLoadlist:totalM>0};
 }
 
-function calcOrderPotentieel(parsed,calc){
+// ══ PRESTATIE PER ORDER ══
+function calcOrderPrestatie(parsed){
   const ll=parsed.loadlist||{};
+  const vals=parsed.values||{};
   const orders=ll.orders||[];
+  const valRows=vals.rows||[];
   if(!orders.length)return null;
-  // Determine shift date: most common startDateStr among completed orders (hasEnd=true)
-  const dateCounts={};
-  orders.forEach(o=>{if(o.hasEnd&&o.startDateStr)dateCounts[o.startDateStr]=(dateCounts[o.startDateStr]||0)+1;});
-  const shiftDate=Object.entries(dateCounts).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
-  // Gedraaide orders: start = shiftDate AND has End
-  const gedraaid=shiftDate?orders.filter(o=>o.startDateStr===shiftDate&&o.hasEnd):orders.filter(o=>o.hasEnd);
-  const gedraaidSet=new Set(gedraaid.map(o=>o.order));
-  const nietGedraaid=orders.filter(o=>!gedraaidSet.has(o.order));
-  // Available extra minutes = ongeplande stilstand
-  const extraMin=calc.opDownMin||0;
-  // Sort niet-gedraaid by estRun (shortest first), only those with estRun > 0
-  const kandidaten=[...nietGedraaid].filter(o=>o.estRun>0).sort((a,b)=>a.estRun-b.estRun);
-  const extraOrders=[];let usedMin=0;
-  for(const o of kandidaten){if(usedMin+o.estRun<=extraMin){extraOrders.push(o);usedMin+=o.estRun;}else break;}
-  return{shiftDate,gedraaid,nietGedraaid,extraMin,extraOrders,extraUsedMin:usedMin,
-    extraMT:extraOrders.reduce((s,o)=>s+(o.mt||0),0),
-    extraM:extraOrders.reduce((s,o)=>s+(o.netProdM||0),0)};
+  return{
+    orders:orders.map(o=>{
+      // Filter values rows by order time window
+      let sRows=[];
+      if(valRows.length&&o.startMin>=0&&o.endMin>o.startMin){
+        sRows=valRows.filter(r=>r.timeMin>=o.startMin&&r.timeMin<=o.endMin);
+      }
+      const iM=15/60;
+      let opstart_min=o.timeMin>0&&o.estRun>0?Math.max(0,o.timeMin-o.estRun):0;
+      let avg_speed_running=o.actualSpd;
+      let benutting_pct=o.speedUtil;
+      let dips=0;
+      let verloren_m=0;
+      let lopende_min=o.timeMin;
+      let paars=false;
+      if(sRows.length>=4){
+        const runRows=sRows.filter(r=>r.spd>0);
+        lopende_min=runRows.length*iM;
+        avg_speed_running=runRows.length?runRows.reduce((s,r)=>s+r.spd,0)/runRows.length:0;
+        benutting_pct=o.maxSpd>0?avg_speed_running/o.maxSpd*100:0;
+        // Opstart: minutes until speed >= maxSpd * 0.9
+        const threshold=o.maxSpd*0.9;
+        let opStartFound=false;
+        for(let i=0;i<sRows.length;i++){
+          if(sRows[i].spd>=threshold){opstart_min=i*iM;opStartFound=true;break;}
+        }
+        if(!opStartFound)opstart_min=lopende_min;
+        // Dips: times speed drops below maxSpd*0.7 while running
+        const dipThr=o.maxSpd*0.7;
+        for(let i=1;i<sRows.length;i++){
+          if(sRows[i-1].spd>=dipThr&&sRows[i].spd>0&&sRows[i].spd<dipThr)dips++;
+        }
+        verloren_m=(o.maxSpd-avg_speed_running)*lopende_min;
+        // Paars: speed constant for 30+ min = 120 rows
+        let maxRun=1,curRun=1;
+        for(let i=1;i<sRows.length;i++){
+          if(sRows[i].spd>0&&Math.abs(sRows[i].spd-sRows[i-1].spd)<0.5)curRun++;
+          else curRun=1;
+          if(curRun>maxRun)maxRun=curRun;
+        }
+        paars=maxRun>=120;
+      }
+      // Determine status
+      let status='geel';
+      if(paars)status='paars';
+      else if(opstart_min>5||benutting_pct<60||dips>8)status='rood';
+      else if(opstart_min<=2&&benutting_pct>=85&&dips<=2)status='groen';
+      return{...o,opstart_min:Math.round(opstart_min*10)/10,avg_speed_running:Math.round(avg_speed_running*10)/10,
+        benutting_pct:Math.round(benutting_pct*10)/10,dips,verloren_m:Math.round(verloren_m),
+        lopende_min:Math.round(lopende_min*10)/10,paars,status};
+    })
+  };
 }
 
-function calcOpstartAnalyse(orderPot, parsed){
+function calcOpstartAnalyse(orderPrestatie,parsed){
   const ll=parsed?.loadlist||{};
   const realTPM=ll.totalNetProdM>0?ll.totalMT/ll.totalNetProdM:0;
-  const orders=(orderPot?.gedraaid||[]).filter(o=>o.opstart_min>0);
+  const orders=(orderPrestatie?.orders||[]).filter(o=>o.opstart_min>0);
   if(!orders.length)return null;
   const norm=2;
   const gem=orders.reduce((s,o)=>s+o.opstart_min,0)/orders.length;
@@ -716,39 +808,34 @@ function calcOpstartAnalyse(orderPot, parsed){
   const verliesMT=verliesM*realTPM;
   const verliesMin=trage.reduce((s,o)=>s+Math.max(0,o.opstart_min-norm),0);
   let verbeterpunt=null;
-  if(trage.length>=2){
-    verbeterpunt={
-      titel:'Opstart procedure versnellen',
-      omschrijving:`${trage.length} van de ${orders.length} orders hadden een opstart > 5 min. Gemiddeld ${fmt(gem,1)} min vs. norm van 2 min. Controleer of de operator wacht op bevestiging die niet nodig is, of dat de bijbaan procedure kan worden verkort.`,
-      prioriteit:trage.length>3?'hoog':'middel',
-      winst_min:Math.round(verliesMin),
-      winst_mt:Math.round(verliesMT*100)/100,
-    };
-  }
+  if(trage.length>=2)verbeterpunt={
+    titel:'Opstart procedure versnellen',
+    omschrijving:`${trage.length} van de ${orders.length} orders hadden een opstart > 5 min. Gemiddeld ${fmt(gem,1)} min vs. norm van 2 min.`,
+    prioriteit:trage.length>3?'hoog':'middel',
+    winst_min:Math.round(verliesMin),winst_mt:Math.round(verliesMT*100)/100
+  };
   return{orders,gem,trage,verliesM:Math.round(verliesM),verliesMT:Math.round(verliesMT*100)/100,verliesMin:Math.round(verliesMin*10)/10,realTPM,verbeterpunt};
 }
 
 // ══ AI ══
 function buildPrompt(parsed,calc){
   const l=[];
-  const o=parsed.oee||{};const sl=parsed.sluis||{};const se=parsed.sense||{};const ev=parsed.events||{};const ll=parsed.loadlist||{};
+  const os=parsed.oeesluis||{};const vals=parsed.values||{};const ev=parsed.events||{};const ll=parsed.loadlist||{};
   l.push('=== OEE ANALYSE DW08 — Metsä NL Winschoten ===');
   l.push('Shift: 07:00-15:30 (510 min)');
   l.push(`OEE=${fmt(calc.oee)}% | B=${fmt(calc.beschikb)}% | P=${fmt(calc.prestatie)}% | K=${fmt(calc.kwal)}%`);
   l.push(`APT=${fmt(calc.apt,0)} min | Ongepland=${fmt(calc.opDownMin,0)} min`);
-  if(o.stilstandCategories?.length){l.push('\n-- STILSTAND OEE --');o.stilstandCategories.slice(0,20).forEach(c=>l.push(`${c.pad}|${c.aantal}x|${fmt(c.duur_min,0)}min|${c.pct}%`));}
-  l.push(`\n-- SLUIS -- RunFactor=${sl.runFactor||'-'}%|NoSluis=${sl.noSluisFactor||'-'}%|Downtime=${fmt(sl.totalSluisDowntimeMin,0)}min`);
-  if(sl.sluisEvents?.length)sl.sluisEvents.slice(0,8).forEach(e=>l.push(`${e.pad}|${e.aantal}x|${fmt(e.duur_min,0)}min`));
-  l.push(`\n-- SENSE -- Loop=${fmt(se.runningMinutes,0)}min|Stil=${fmt(se.standstillMinutes,0)}min|Gem=${se.avgRunningSpeed}m/min|Max=${se.maxSpeedSetting}m/min`);
-  l.push(`RG=${fmt(se.rejectGateOpenMinutes,0)}min(${fmt(se.rejectGatePct,1)}%)|Cut=${se.cutMeters}m|FC=${fmt(se.formatchgActiveMinutes,0)}min`);
-  if(se.alarmMinutes?.length)l.push('Alarm:'+se.alarmMinutes.map(a=>`${a.code}=${a.min}m`).join(','));
+  if(os.stilstand?.length){l.push('\n-- STILSTAND --');os.stilstand.slice(0,20).forEach(c=>l.push(`${c.omschrijving}|${c.aantal}x|${fmt(c.duur_min,0)}min|${c.pct}%`));}
+  l.push(`\n-- SLUIS -- RunFactor=${os.run_factor||'-'}%|NoSluis=${os.no_sluis_factor||'-'}%|noRun=${os.norun_min||0}min|Sluis=${os.sluis_min||0}min`);
+  l.push(`\n-- VALUES -- Loop=${fmt(vals.runningMinutes,0)}min|Stil=${fmt(vals.standstillMinutes,0)}min|Gem=${vals.avgRunningSpeed}m/min|Max=${vals.maxSpeedSetting}m/min`);
+  l.push(`RGOpen=${fmt(vals.rejectGateOpenMinutes,0)}min(${fmt(vals.rejectGatePct,1)}%)|Cut=${vals.cutMeters}m`);
+  if(vals.alarmMinutes?.length)l.push('Alarm:'+vals.alarmMinutes.map(a=>`${a.code}=${a.min}m`).join(','));
   if(ev.events?.length){l.push(`\n-- EVENTS (${ev.totalEvents}x,${fmt(ev.totalDurMin,0)}min) --`);ev.events.slice(0,60).forEach(e=>l.push(`${e.t}|${fmt(e.dur_min,0)}m|${e.cat}|${e.comment||'-'}`));}
-  if(ll.orders?.length){l.push(`\n-- ORDERS | ${fmt(ll.totalMT,2)}MT|${fmt(ll.totalNetProdM,0)}m --`);ll.orders.forEach(o=>l.push(`${o.order}|${o.product}|${o.gsm}g|${o.widthMm}mm|${fmt(o.netProdM,0)}m|${fmt(o.mt,2)}MT|${fmt(o.tonH,2)}t/h`));}
-  l.push('\nOPDRACHT: Categoriseer events als Machine/Operator/Kwaliteit. Geef verbeteradviezen. Analyseer alarmcodes en sluispatronen. Bereken GEEN OEE/MT. Retourneer ALLEEN dit JSON:');
-  l.push(JSON.stringify({machine:{events:[{t:"HH:MM",label:"Naam",dur_min:0,oorzaak:"Root cause"}],total_min:0,top_oorzaken:[{naam:"...",events:0,min:0}],score:0,verdict:"...",verbeteringen:[{titel:"...",omschrijving:"...",prioriteit:"hoog",winst_min:0}],alarm_analyse:"..."},operator:{events:[],total_min:0,top_oorzaken:[],score:0,verdict:"...",verbeteringen:[]},kwaliteit:{events:[],total_min:0,top_oorzaken:[],score:0,verdict:"...",verbeteringen:[],protocol:["Stap 1:...","Stap 2:...","Stap 3:...","Stap 4:...","Stap 5:..."]},gepland:{total_min:0},sluis:{analyse:"...",top_events:[{label:"...",aantal:0,min:0}],verbeteringen:[{titel:"...",omschrijving:"...",prioriteit:"hoog",winst_min:0}]},meta:{machine:"DW08",locatie:"Metsä NL Winschoten",shift_start:"07:00",shift_end:"15:30",totaal_events:0,ongepland_min:0,grootste_veroorzaker:"machine"}}));
+  if(ll.orders?.length){l.push(`\n-- ORDERS | ${fmt(ll.totalMT,2)}MT|${fmt(ll.totalNetProdM,0)}m --`);ll.orders.forEach(o=>l.push(`${o.order}|${o.product}|${o.gsm}g|${o.reelWidth}mm|${fmt(o.netProdM,0)}m|${fmt(o.mt,2)}MT`));}
+  l.push('\nOPDRACHT: Categoriseer events als Machine/Operator/Kwaliteit. Verbeteradviezen. Alarmanalyse. Retourneer ALLEEN dit JSON:');
+  l.push(JSON.stringify({machine:{events:[{t:'HH:MM',label:'',dur_min:0,oorzaak:''}],total_min:0,top_oorzaken:[{naam:'',events:0,min:0}],score:0,verdict:'',verbeteringen:[{titel:'',omschrijving:'',prioriteit:'hoog',winst_min:0}],alarm_analyse:''},operator:{events:[],total_min:0,top_oorzaken:[],score:0,verdict:'',verbeteringen:[]},kwaliteit:{events:[],total_min:0,top_oorzaken:[],score:0,verdict:'',verbeteringen:[],protocol:['Stap 1:...','Stap 2:...','Stap 3:...','Stap 4:...','Stap 5:...']},sluis:{analyse:'',top_events:[{label:'',aantal:0,min:0}],verbeteringen:[{titel:'',omschrijving:'',prioriteit:'hoog',winst_min:0}]},meta:{machine:'DW08',shift_start:'07:00',shift_end:'15:30',ongepland_min:0,grootste_veroorzaker:'machine'}}));
   return l.join('\n');
 }
-
 function extractJSON(txt){
   try{return JSON.parse(txt);}catch{}
   const m=txt.match(/```(?:json)?\s*([\s\S]*?)```/);if(m){try{return JSON.parse(m[1]);}catch{}}
@@ -756,7 +843,6 @@ function extractJSON(txt){
   if(a>=0&&b>a){try{return JSON.parse(txt.slice(a,b+1));}catch{}}
   return null;
 }
-
 async function callAI(prompt){
   const res=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
   if(!res.ok)throw new Error('API '+res.status);
@@ -764,17 +850,17 @@ async function callAI(prompt){
   return extractJSON(text);
 }
 
-// ══ MAIN FLOW ══
+// ══ MAIN FLOW — 8 stappen ══
 async function startAnalysis(){
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('loading-screen').style.display='block';
   try{
-    setStep(0,'active');STATE.parsed.oee=await parseOEE(STATE.files.oee);setStep(0,'done');
-    setStep(1,'active');STATE.parsed.sluis=await parseSluis(STATE.files.sluis);setStep(1,'done');
-    setStep(2,'active');STATE.parsed.sense=await parseSense(STATE.files.sense);setStep(2,'done');
-    setStep(3,'active');STATE.parsed.events=await parseEvents(STATE.files.events);setStep(3,'done');
-    setStep(4,'active');STATE.parsed.loadlist=STATE.files.loadlist?await parseLoadList(STATE.files.loadlist):null;setStep(4,'done');
-    setStep(5,'active');STATE.calc=calcOEE(STATE.parsed);STATE.pot=calcPotential(STATE.parsed,STATE.calc);STATE.orderPot=calcOrderPotentieel(STATE.parsed,STATE.calc);STATE.opstartAnalyse=calcOpstartAnalyse(STATE.orderPot,STATE.parsed);setStep(5,'done');
+    setStep(0,'active');STATE.parsed.loadlist=await parseLoadList(STATE.files.loadlist);setStep(0,'done');
+    setStep(1,'active');STATE.parsed.values=await parseValues(STATE.files.values);setStep(1,'done');
+    setStep(2,'active');STATE.parsed.events=await parseEvents(STATE.files.events);setStep(2,'done');
+    setStep(3,'active');STATE.parsed.oeesluis=await parseOEESluis(STATE.files.oeesluis);setStep(3,'done');
+    setStep(4,'active');STATE.calc=calcOEE(STATE.parsed);STATE.pot=calcPotential(STATE.parsed,STATE.calc);setStep(4,'done');
+    setStep(5,'active');STATE.orderPrestatie=calcOrderPrestatie(STATE.parsed);STATE.opstartAnalyse=calcOpstartAnalyse(STATE.orderPrestatie,STATE.parsed);setStep(5,'done');
     setStep(6,'active');
     try{STATE.ai=await callAI(buildPrompt(STATE.parsed,STATE.calc));}catch(e){console.warn('AI:',e.message);STATE.ai=null;}
     setStep(6,'done');
@@ -784,7 +870,6 @@ async function startAnalysis(){
     switchTab(0);setStep(7,'done');
   }catch(e){console.error(e);alert('Fout: '+e.message);showUpload();}
 }
-
 function showUpload(){
   document.getElementById('dashboard').style.display='none';
   document.getElementById('loading-screen').style.display='none';
@@ -793,157 +878,69 @@ function showUpload(){
   document.getElementById('demo-banner').style.display='none';
 }
 
-// ══ DEMO ══
+// ══ DEMO DATA ══
 const _dRan=[
-  {order:'305454',product:'PRIFBBBRN305R',gsm:305,widthMm:749,widthMm2:0,vellengrootte:749,netProdM:1060,mt:0.24,tonH:5.3,timeMin:12,estRun:0,maxSpd:335,actualSpd:225,speedUtil:67.2,startDateStr:'08/04/26',hasEnd:true,opstart_min:1.5},
-  {order:'305371',product:'PROFBBBRN290R',gsm:290,widthMm:805,widthMm2:0,vellengrootte:805,netProdM:3060,mt:0.71,tonH:4.7,timeMin:39,estRun:0,maxSpd:350,actualSpd:280,speedUtil:80.0,startDateStr:'08/04/26',hasEnd:true,opstart_min:4.8},
-  {order:'305679',product:'PROFBBGO275R',gsm:275,widthMm:1020,widthMm2:0,vellengrootte:1020,netProdM:636,mt:0.18,tonH:2.4,timeMin:16,estRun:0,maxSpd:348,actualSpd:205,speedUtil:58.9,startDateStr:'08/04/26',hasEnd:true,opstart_min:7.2},
-  {order:'305612',product:'PROFBBGO225R',gsm:225,widthMm:900,widthMm2:0,vellengrootte:900,netProdM:8760,mt:1.77,tonH:6.7,timeMin:78,estRun:0,maxSpd:350,actualSpd:290,speedUtil:82.9,startDateStr:'08/04/26',hasEnd:true,opstart_min:1.5},
-  {order:'305544',product:'PRIFBBBRN255R',gsm:255,widthMm:1000,widthMm2:0,vellengrootte:1000,netProdM:2072,mt:0.53,tonH:4.1,timeMin:30,estRun:0,maxSpd:350,actualSpd:265,speedUtil:75.7,startDateStr:'08/04/26',hasEnd:true,opstart_min:7.5},
-  {order:'305516',product:'PRIFBBBRN270R',gsm:270,widthMm:900,widthMm2:0,vellengrootte:900,netProdM:5056,mt:1.23,tonH:7.1,timeMin:43,estRun:0,maxSpd:350,actualSpd:295,speedUtil:84.3,startDateStr:'08/04/26',hasEnd:true,opstart_min:2.1},
-  {order:'305449',product:'PRIFBBBRN280R',gsm:280,widthMm:730,widthMm2:0,vellengrootte:730,netProdM:4008,mt:0.82,tonH:2.7,timeMin:89,estRun:0,maxSpd:329,actualSpd:190,speedUtil:57.8,startDateStr:'08/04/26',hasEnd:true,opstart_min:8.4},
-  {order:'305500',product:'PRIFBBBRN170R',gsm:170,widthMm:995,widthMm2:0,vellengrootte:995,netProdM:3200,mt:0.54,tonH:3.1,timeMin:52,estRun:0,maxSpd:350,actualSpd:195,speedUtil:55.7,startDateStr:'08/04/26',hasEnd:true,opstart_min:11.2},
-  {order:'305380',product:'PROFBBBRN310R',gsm:310,widthMm:820,widthMm2:0,vellengrootte:820,netProdM:2140,mt:0.54,tonH:4.8,timeMin:28,estRun:0,maxSpd:350,actualSpd:270,speedUtil:77.1,startDateStr:'08/04/26',hasEnd:true,opstart_min:2.4},
-  {order:'305391',product:'PRIFBBBRN245R',gsm:245,widthMm:780,widthMm2:0,vellengrootte:780,netProdM:1890,mt:0.36,tonH:3.6,timeMin:31,estRun:0,maxSpd:344,actualSpd:245,speedUtil:71.2,startDateStr:'08/04/26',hasEnd:true,opstart_min:1.8},
-  {order:'305402',product:'PROFBBGO260R',gsm:260,widthMm:940,widthMm2:0,vellengrootte:940,netProdM:4850,mt:1.18,tonH:5.2,timeMin:55,estRun:0,maxSpd:350,actualSpd:260,speedUtil:74.3,startDateStr:'08/04/26',hasEnd:true,opstart_min:6.8},
+  {order:'305454',product:'PRIFBBBRN305R',gsm:305,reelWidth:749,vellengrootte:749,netProdM:1060,mt:0.24,tonH:5.3,timeMin:12,estRun:0,maxSpd:335,actualSpd:225,speedUtil:67.2,startMin:420,endMin:432,hasEnd:true,opstart_min:1.5,avg_speed_running:225,benutting_pct:67.2,dips:1,verloren_m:1320,lopende_min:12,status:'geel'},
+  {order:'305371',product:'PROFBBBRN290R',gsm:290,reelWidth:805,vellengrootte:805,netProdM:3060,mt:0.71,tonH:4.7,timeMin:39,estRun:0,maxSpd:350,actualSpd:280,speedUtil:80.0,startMin:432,endMin:471,hasEnd:true,opstart_min:4.8,avg_speed_running:280,benutting_pct:80.0,dips:2,verloren_m:2730,lopende_min:39,status:'geel'},
+  {order:'305679',product:'PROFBBGO275R',gsm:275,reelWidth:1020,vellengrootte:1020,netProdM:636,mt:0.18,tonH:2.4,timeMin:16,estRun:0,maxSpd:348,actualSpd:205,speedUtil:58.9,startMin:500,endMin:516,hasEnd:true,opstart_min:7.2,avg_speed_running:205,benutting_pct:58.9,dips:1,verloren_m:2288,lopende_min:16,status:'rood'},
+  {order:'305612',product:'PROFBBGO225R',gsm:225,reelWidth:900,vellengrootte:900,netProdM:8760,mt:1.77,tonH:6.7,timeMin:78,estRun:0,maxSpd:350,actualSpd:305,speedUtil:87.1,startMin:516,endMin:594,hasEnd:true,opstart_min:1.5,avg_speed_running:305,benutting_pct:87.1,dips:1,verloren_m:3510,lopende_min:78,status:'groen'},
+  {order:'305544',product:'PRIFBBBRN255R',gsm:255,reelWidth:1000,vellengrootte:1000,netProdM:2072,mt:0.53,tonH:4.1,timeMin:30,estRun:0,maxSpd:350,actualSpd:265,speedUtil:75.7,startMin:594,endMin:624,hasEnd:true,opstart_min:7.5,avg_speed_running:265,benutting_pct:75.7,dips:2,verloren_m:2550,lopende_min:30,status:'rood'},
+  {order:'305516',product:'PRIFBBBRN270R',gsm:270,reelWidth:900,vellengrootte:900,netProdM:5056,mt:1.23,tonH:7.1,timeMin:43,estRun:0,maxSpd:350,actualSpd:295,speedUtil:84.3,startMin:624,endMin:667,hasEnd:true,opstart_min:2.1,avg_speed_running:295,benutting_pct:84.3,dips:1,verloren_m:2365,lopende_min:43,status:'geel'},
+  {order:'305449',product:'PRIFBBBRN280R',gsm:280,reelWidth:730,vellengrootte:730,netProdM:4008,mt:0.82,tonH:2.7,timeMin:89,estRun:0,maxSpd:329,actualSpd:190,speedUtil:57.8,startMin:667,endMin:756,hasEnd:true,opstart_min:8.4,avg_speed_running:190,benutting_pct:57.8,dips:4,verloren_m:12461,lopende_min:89,status:'rood'},
+  {order:'305500',product:'PRIFBBBRN170R',gsm:170,reelWidth:995,vellengrootte:995,netProdM:3200,mt:0.54,tonH:3.1,timeMin:52,estRun:0,maxSpd:350,actualSpd:195,speedUtil:55.7,startMin:756,endMin:808,hasEnd:true,opstart_min:11.2,avg_speed_running:195,benutting_pct:55.7,dips:5,verloren_m:8060,lopende_min:52,status:'rood'},
+  {order:'305380',product:'PROFBBBRN310R',gsm:310,reelWidth:820,vellengrootte:820,netProdM:2140,mt:0.54,tonH:4.8,timeMin:28,estRun:0,maxSpd:350,actualSpd:270,speedUtil:77.1,startMin:808,endMin:836,hasEnd:true,opstart_min:2.4,avg_speed_running:270,benutting_pct:77.1,dips:1,verloren_m:2240,lopende_min:28,status:'geel'},
+  {order:'305391',product:'PRIFBBBRN245R',gsm:245,reelWidth:780,vellengrootte:780,netProdM:1890,mt:0.36,tonH:3.6,timeMin:31,estRun:0,maxSpd:344,actualSpd:245,speedUtil:71.2,startMin:836,endMin:867,hasEnd:true,opstart_min:1.8,avg_speed_running:245,benutting_pct:71.2,dips:1,verloren_m:3069,lopende_min:31,status:'geel'},
+  {order:'305402',product:'PROFBBGO260R',gsm:260,reelWidth:940,vellengrootte:940,netProdM:4850,mt:1.18,tonH:5.2,timeMin:55,estRun:0,maxSpd:350,actualSpd:260,speedUtil:74.3,startMin:867,endMin:922,hasEnd:true,opstart_min:6.8,avg_speed_running:260,benutting_pct:74.3,dips:3,verloren_m:4950,lopende_min:55,status:'rood'}
 ];
 const _dExtra=[
-  {order:'305510',product:'PRIFBBBRN285R',gsm:285,widthMm:760,widthMm2:0,vellengrootte:760,netProdM:9231,mt:2.0,tonH:0,timeMin:0,estRun:28,maxSpd:338,actualSpd:0,speedUtil:0,startDateStr:'',hasEnd:false},
-  {order:'305521',product:'PROFBBGO240R',gsm:240,widthMm:890,widthMm2:0,vellengrootte:890,netProdM:9370,mt:2.0,tonH:0,timeMin:0,estRun:35,maxSpd:350,actualSpd:0,speedUtil:0,startDateStr:'',hasEnd:false},
-  {order:'305532',product:'PRIFBBBRN300R',gsm:300,widthMm:810,widthMm2:0,vellengrootte:810,netProdM:9053,mt:2.2,tonH:0,timeMin:0,estRun:31,maxSpd:350,actualSpd:0,speedUtil:0,startDateStr:'',hasEnd:false},
-  {order:'305543',product:'PROFBBBRN265R',gsm:265,widthMm:950,widthMm2:0,vellengrootte:950,netProdM:7948,mt:2.0,tonH:0,timeMin:0,estRun:33,maxSpd:350,actualSpd:0,speedUtil:0,startDateStr:'',hasEnd:false},
+  {order:'305510',product:'PRIFBBBRN285R',gsm:285,reelWidth:760,vellengrootte:760,netProdM:9231,mt:2.0,estRun:28,maxSpd:338,actualSpd:0,speedUtil:0,hasEnd:false},
+  {order:'305521',product:'PROFBBGO240R',gsm:240,reelWidth:890,vellengrootte:890,netProdM:9370,mt:2.0,estRun:35,maxSpd:350,actualSpd:0,speedUtil:0,hasEnd:false},
 ];
 const DEMO_DATA={
   calc:{oee:58.7,beschikb:96.8,prestatie:78.2,kwal:77.4,apt:496,notSchedMin:0,planDownMin:14,opDownMin:127},
-  pot:{s1:41.3,s2:42.4,s3:43.2,s4:51.8,s5:64.2,sGain:1.1,eGain:0.8,sp280Gain:8.6,totalMT:41.3,totalM:118420,avgSpd:248,realTPM:41.3/118420,hasLoadlist:true,opDownMin:127,extraM:31496,extraMT:10.98,realistischExtraM:18898,realistischExtraMT:6.59,avgTonH:4.7},
+  pot:{s1:41.3,s2:42.4,s3:43.2,s4:51.8,s5:64.2,sGain:1.1,eGain:0.8,sp280Gain:8.6,totalMT:41.3,totalM:118420,avgSpd:248,realTPM:41.3/118420,hasLoadlist:true,opDownMin:127,norunMin:46,sluisMin:82,extraM:31496,extraMT:10.98,realistischExtraM:18898,realistischExtraMT:6.59,avgTonH:4.7},
   ai:{
-    machine:{score:38,total_min:37,
-      verdict:'Slowbelt is de grootste verliespost met 5 events en 12 minuten stilstand. Sensor 509 offset veroorzaakt 3 onnodige stops. Alarmcodes 1289 en 1281 vragen rootcause analyse.',
-      top_oorzaken:[{naam:'Slowbelt',events:5,min:12},{naam:'Sensor 509',events:3,min:9},{naam:'Alarm 1289',events:1,min:8},{naam:'Alarm 1281',events:1,min:5},{naam:'Alarm 97',events:2,min:3}],
-      verbeteringen:[
-        {titel:'Slowbelt structureel oplossen',omschrijving:'5 events suggereren slijtage of spanning. Vervang slowbelt preventief en stel spanning opnieuw in.',prioriteit:'hoog',winst_min:12},
-        {titel:'Sensor 509 offsetinstelling',omschrijving:'Sensor triggert te snel. Offset bijstellen en valideren op meerdere producten.',prioriteit:'hoog',winst_min:9},
-        {titel:'Alarmcode 1289 rootcause',omschrijving:'8 minuten downtime, oorzaak onbekend. Logboek analyseren en PLC dump opvragen bij technische dienst.',prioriteit:'middel',winst_min:0},
-      ],
-      alarm_analyse:'Alarm 97 (3 min, 2x) is een leeg-loop alarm, gecombineerd met operator event. Alarm 1289 (8 min) en 1281 (5 min) zijn machine-specifiek en vragen rootcause analyse. Totaal 25 min alarmgerelateerde stilstand.',
-      events:[
-        {t:'07:15',dur_min:3,label:'Slowbelt',oorzaak:'Belt spanning'},{t:'07:35',dur_min:2,label:'Slowbelt',oorzaak:''},
-        {t:'08:45',dur_min:3,label:'Sensor 509',oorzaak:'Offset drift'},{t:'09:20',dur_min:1,label:'Alarm 97',oorzaak:'Leeg loop'},
-        {t:'10:30',dur_min:3,label:'Slowbelt',oorzaak:''},{t:'11:45',dur_min:8,label:'Alarm 1289',oorzaak:'Rootcause onbekend'},
-        {t:'12:20',dur_min:2,label:'Slowbelt',oorzaak:''},{t:'12:55',dur_min:3,label:'Sensor 509',oorzaak:''},
-        {t:'13:30',dur_min:5,label:'Alarm 1281',oorzaak:''},{t:'14:10',dur_min:2,label:'Slowbelt',oorzaak:''},
-        {t:'14:40',dur_min:3,label:'Sensor 509',oorzaak:''},{t:'14:50',dur_min:1,label:'Alarm 97',oorzaak:'Leeg loop'},
-      ]},
-    operator:{score:62,total_min:18,
-      verdict:'Snelheidsbeperking bij 170 gsm orders kost structureel tijd. Alarm 97 leeg loop procedure wordt niet consequent gevolgd. Goede insteltijden bij zware orders.',
-      top_oorzaken:[{naam:'Snelheidsbeperking 170gsm',events:3,min:15},{naam:'Alarm 97 leeg loop',events:2,min:3}],
-      verbeteringen:[
-        {titel:'170 gsm snelheid: engineering actie',omschrijving:'Order 305500 (170gsm) loopt op 195 m/min terwijl machine meer aankan. Engineering onderzoek naar snelheidsparameters voor lage grammatuur.',prioriteit:'hoog',winst_min:0},
-        {titel:'Alarm 97 leeg loop procedure',omschrijving:'2 events, 3 min verlies. Protocol aanscherpen: bij Alarm 97 direct leeg lopen voor reset.',prioriteit:'middel',winst_min:3},
-      ],
-      events:[
-        {t:'08:30',dur_min:5,label:'Snelheidsbeperking 170gsm',oorzaak:'GSM 170 max snelheid protocol'},
-        {t:'09:20',dur_min:2,label:'Alarm 97 leeg loop',oorzaak:'Procedure niet gevolgd'},
-        {t:'11:10',dur_min:5,label:'Snelheidsbeperking 170gsm',oorzaak:''},
-        {t:'13:50',dur_min:5,label:'Snelheidsbeperking 170gsm',oorzaak:'Engineering actie vereist'},
-        {t:'14:20',dur_min:1,label:'Alarm 97 leeg loop',oorzaak:''},
-      ]},
-    kwaliteit:{score:71,total_min:18,
-      verdict:'Halve maan 2x gevonden bij inladen, hoekjes dubbel 2x door bokken-instelling afwijking. Kwaliteitsprotocol versterken met pre-check procedure.',
-      top_oorzaken:[{naam:'Halve maan',events:2,min:10},{naam:'Hoekjes dubbel',events:2,min:8}],
-      verbeteringen:[
-        {titel:'Hoekjes dubbel: bokken-instelling',omschrijving:'2 events met dubbele hoekjes. Bokken-instelling controleren bij formaatwisseling met >50mm verschil.',prioriteit:'hoog',winst_min:0},
-        {titel:'Halve maan pre-check bij inladen',omschrijving:'2x halve maan na inladen. Pre-check toevoegen: controleer reel-aansnijding voor start.',prioriteit:'middel',winst_min:8},
-      ],
-      protocol:[
-        'Stap 1: Stop machine direct bij kwaliteitsdetectie, noteer tijdstip en positie.',
-        'Stap 2: Identificeer het defect: halve maan, hoekjes dubbel, scheefloop of scheuring.',
-        'Stap 3: Controleer instelling bokken, snijmessen en reel-positie.',
-        'Stap 4: Correctie uitvoeren en testrun van 5 vellen controleren.',
-        'Stap 5: Registreer event in PROMs met oorzaak en corrigerende maatregel.',
-      ],
-      events:[
-        {t:'11:15',dur_min:10,label:'Halve maan',oorzaak:'Reel aansnijding niet gecontroleerd'},
-        {t:'12:50',dur_min:8,label:'Hoekjes dubbel',oorzaak:'Bokken-instelling afwijking'},
-      ]},
-    sluis:{
-      analyse:'Rejectgate open 82 min (16.5% van shift). Formaatwisselingen veroorzaken de meeste sluistijd. Wegdraaien halve maan is terugkerend. NoSluisFactor 83.7% toont optimalisatiepotentieel bij formaatwisselprocedure.',
-      top_events:[
-        {label:'Sluis open',aantal:29,min:14},{label:'Formaat wissel opstarten bijbaan',aantal:4,min:9},
-        {label:'Formaat wissel',aantal:6,min:8},{label:'Na Alarm',aantal:3,min:7},{label:'Wegdraaien halve maan',aantal:2,min:4},
-      ],
-      verbeteringen:[
-        {titel:'Formaatwisselprocedure optimaliseren',omschrijving:'Bijbaan procedure bij formaatwisseling kost 9 min. Standaardiseer voorbereiding: materialen klaarzetten voor wissel.',prioriteit:'hoog',winst_min:5},
-        {titel:'Sluis parameters fine-tunen',omschrijving:'29x open bij normale productie. Parameters aanpassen voor GSM/snelheidscombinaties die nu vals alarmeren.',prioriteit:'middel',winst_min:3},
-      ]},
-    meta:{machine:'DW08',locatie:'Metsä NL Winschoten',shift_start:'07:00',shift_end:'15:30',totaal_events:25,ongepland_min:127,grootste_veroorzaker:'machine'},
+    machine:{score:38,total_min:37,verdict:'Slowbelt is de grootste verliespost met 5 events en 12 minuten stilstand. Sensor 509 offset veroorzaakt 3 onnodige stops.',top_oorzaken:[{naam:'Slowbelt',events:5,min:12},{naam:'Sensor 509',events:3,min:9},{naam:'Alarm 1289',events:1,min:8},{naam:'Alarm 1281',events:1,min:5}],verbeteringen:[{titel:'Slowbelt structureel oplossen',omschrijving:'5 events suggereren slijtage. Vervang slowbelt preventief.',prioriteit:'hoog',winst_min:12},{titel:'Sensor 509 offset',omschrijving:'Sensor triggert te snel. Offset bijstellen.',prioriteit:'hoog',winst_min:9}],alarm_analyse:'Alarm 97 (3 min, 2x) is een leeg-loop alarm. Alarm 1289 (8 min) vraagt rootcause analyse.',events:[{t:'07:15',dur_min:3,label:'Slowbelt',oorzaak:'Belt spanning'},{t:'11:45',dur_min:8,label:'Alarm 1289',oorzaak:'Rootcause onbekend'}]},
+    operator:{score:62,total_min:18,verdict:'Snelheidsbeperking bij 170 gsm orders kost structureel tijd.',top_oorzaken:[{naam:'Snelheidsbeperking 170gsm',events:3,min:15},{naam:'Alarm 97 leeg loop',events:2,min:3}],verbeteringen:[{titel:'170 gsm snelheid: engineering',omschrijving:'Engineering onderzoek naar snelheidsparameters lage grammatuur.',prioriteit:'hoog',winst_min:0}],events:[{t:'13:50',dur_min:5,label:'Snelheidsbeperking',oorzaak:'GSM 170 protocol'}]},
+    kwaliteit:{score:71,total_min:18,verdict:'Halve maan 2x gevonden bij inladen, hoekjes dubbel 2x.',top_oorzaken:[{naam:'Halve maan',events:2,min:10},{naam:'Hoekjes dubbel',events:2,min:8}],verbeteringen:[{titel:'Hoekjes dubbel: bokken-instelling',omschrijving:'Bokken-instelling controleren bij formaatwisseling.',prioriteit:'hoog',winst_min:0}],protocol:['Stap 1: Stop machine direct bij kwaliteitsdetectie.','Stap 2: Identificeer het defect.','Stap 3: Controleer bokken, snijmessen en reel-positie.','Stap 4: Correctie en testrun van 5 vellen.','Stap 5: Registreer in PROMs met oorzaak en maatregel.'],events:[{t:'11:15',dur_min:10,label:'Halve maan',oorzaak:'Reel aansnijding'},{t:'12:50',dur_min:8,label:'Hoekjes dubbel',oorzaak:'Bokken-instelling'}]},
+    sluis:{analyse:'Rejectgate open 82 min (16.5%). Formaatwisselingen veroorzaken meeste sluistijd.',top_events:[{label:'Sluis open',aantal:29,min:14},{label:'Formaat wissel bijbaan',aantal:4,min:9},{label:'Formaat wissel',aantal:6,min:8},{label:'Na Alarm',aantal:3,min:7}],verbeteringen:[{titel:'Formaatwisselprocedure optimaliseren',omschrijving:'Bijbaan procedure kost 9 min. Standaardiseer voorbereiding.',prioriteit:'hoog',winst_min:5}]},
+    meta:{machine:'DW08',shift_start:'07:00',shift_end:'15:30',ongepland_min:127,grootste_veroorzaker:'machine'}
   },
   parsed:{
-    oee:{ntRate:96.8,plRate:78.2,handlingRate:77.4,oeeHuidig:58.7,notScheduledMin:0,plannedDownMin:14,opDownMin:127,
-      stilstandCategories:[
-        {pad:'Machine > Slowbelt',aantal:5,duur_str:'0:12:00',duur_min:12,pct:9.4},
-        {pad:'Formaat wissel > Overige wisseling',aantal:6,duur_str:'0:21:00',duur_min:21,pct:16.5},
-        {pad:'Operator > Snelheidsbeperking 170gsm',aantal:3,duur_str:'0:15:00',duur_min:15,pct:11.8},
-        {pad:'Kwaliteit > Halve maan',aantal:2,duur_str:'0:10:00',duur_min:10,pct:7.9},
-        {pad:'Machine > Sensor 509',aantal:3,duur_str:'0:09:00',duur_min:9,pct:7.1},
-        {pad:'Machine > Alarm 1289',aantal:1,duur_str:'0:08:00',duur_min:8,pct:6.3},
-        {pad:'Kwaliteit > Hoekjes dubbel',aantal:2,duur_str:'0:08:00',duur_min:8,pct:6.3},
-        {pad:'Machine > Alarm 1281',aantal:1,duur_str:'0:05:00',duur_min:5,pct:3.9},
-        {pad:'Machine > Alarm 97',aantal:2,duur_str:'0:03:00',duur_min:3,pct:2.4},
-        {pad:'Operator > Alarm 97 leeg loop',aantal:2,duur_str:'0:03:00',duur_min:3,pct:2.4},
-      ]},
-    sluis:{runFactor:90.1,noSluisFactor:83.7,totalSluisDowntimeMin:82,
-      sluisEvents:[
-        {pad:'RejectGate > Sluis open',aantal:29,duur_min:14,pct:17},
-        {pad:'RejectGate > Formaat wissel opstarten bijbaan',aantal:4,duur_min:9,pct:11},
-        {pad:'RejectGate > Formaat wissel',aantal:6,duur_min:8,pct:10},
-        {pad:'RejectGate > Na Alarm',aantal:3,duur_min:7,pct:9},
-        {pad:'RejectGate > Wegdraaien halve maan',aantal:2,duur_min:4,pct:5},
-      ]},
-    sense:{totalPoints:1984,intervalSec:15,runningMinutes:420,standstillMinutes:76,avgRunningSpeed:248,maxSpeedSetting:348,maxSpeedSeen:336,
-      rejectGateOpenMinutes:82,rejectGatePct:16.5,cutMeters:118420,formatchgActiveMinutes:21,
-      speedDistribution:{'0':76,'1-100':8,'101-200':45,'201-280':155,'281-350':212},
-      alarmMinutes:[{code:509,min:9},{code:1289,min:8},{code:1281,min:5},{code:97,min:3},{code:32,min:2}]},
-    events:{totalEvents:25,totalDurMin:165,events:[
-      {nr:1,t:'07:15',dur_min:3,cat:'Machine > Slowbelt',comment:'Belt spanning',registrator:'Operator1'},
-      {nr:2,t:'07:35',dur_min:2,cat:'Machine > Slowbelt',comment:'',registrator:'Operator1'},
-      {nr:3,t:'08:10',dur_min:9,cat:'Formaat wisseling > 749→805mm',comment:'Bijbaan opstarten',registrator:'Operator2'},
-      {nr:4,t:'08:45',dur_min:3,cat:'Machine > Sensor 509',comment:'Offset drift bijgesteld',registrator:'Operator1'},
-      {nr:5,t:'09:20',dur_min:2,cat:'Operator > Alarm 97 leeg loop',comment:'Leeg loop',registrator:'Operator2'},
-      {nr:6,t:'09:55',dur_min:12,cat:'Formaat wisseling > 805→1020mm',comment:'Bijbaan storingen',registrator:'Operator2'},
-      {nr:7,t:'10:30',dur_min:3,cat:'Machine > Slowbelt',comment:'',registrator:'Operator2'},
-      {nr:8,t:'10:55',dur_min:10,cat:'Formaat wisseling > 1020→900mm',comment:'',registrator:'Operator1'},
-      {nr:9,t:'11:15',dur_min:10,cat:'Kwaliteit > Halve maan',comment:'2x halve maan gevonden',registrator:'Operator1'},
-      {nr:10,t:'11:45',dur_min:8,cat:'Machine > Alarm 1289',comment:'Rootcause onbekend',registrator:'Operator1'},
-      {nr:11,t:'12:10',dur_min:5,cat:'Formaat wisseling > 900→1000mm',comment:'',registrator:'Operator2'},
-      {nr:12,t:'12:20',dur_min:2,cat:'Machine > Slowbelt',comment:'',registrator:'Operator2'},
-      {nr:13,t:'12:50',dur_min:8,cat:'Kwaliteit > Hoekjes dubbel',comment:'Bokken-instelling afwijking',registrator:'Operator1'},
-      {nr:14,t:'12:55',dur_min:3,cat:'Machine > Sensor 509',comment:'',registrator:'Operator1'},
-      {nr:15,t:'13:20',dur_min:5,cat:'Formaat wisseling > 1000→730mm',comment:'',registrator:'Operator2'},
-      {nr:16,t:'13:30',dur_min:5,cat:'Machine > Alarm 1281',comment:'',registrator:'Operator2'},
-      {nr:17,t:'13:50',dur_min:5,cat:'Operator > Snelheidsbeperking 170gsm',comment:'',registrator:'Operator1'},
-      {nr:18,t:'14:05',dur_min:8,cat:'Formaat wisseling > 730→995mm',comment:'Lange wisseltijd',registrator:'Operator1'},
-      {nr:19,t:'14:10',dur_min:2,cat:'Machine > Slowbelt',comment:'',registrator:'Operator2'},
-      {nr:20,t:'14:20',dur_min:1,cat:'Operator > Alarm 97 leeg loop',comment:'',registrator:'Operator2'},
-      {nr:21,t:'14:30',dur_min:3,cat:'Operator > Snelheidsbeperking 170gsm',comment:'Engineering actie vereist',registrator:'Operator1'},
-      {nr:22,t:'14:40',dur_min:3,cat:'Machine > Sensor 509',comment:'',registrator:'Operator1'},
-      {nr:23,t:'14:50',dur_min:1,cat:'Machine > Alarm 97',comment:'Leeg loop',registrator:'Operator2'},
-      {nr:24,t:'15:00',dur_min:2,cat:'Machine > Slowbelt',comment:'',registrator:'Operator2'},
-      {nr:25,t:'15:10',dur_min:5,cat:'Operator > Snelheidsbeperking 170gsm',comment:'',registrator:'Operator1'},
+    loadlist:{totalMT:41.3,totalNetProdM:118420,avgTonH:4.7,avgGsm:262,avgWidthMm:885,orders:[..._dRan,..._dExtra]},
+    values:{totalPoints:1984,intervalSec:15,runningMinutes:420,standstillMinutes:76,avgRunningSpeed:248,maxSpeedSetting:348,maxSpeedSeen:336,rejectGateOpenMinutes:82,rejectGatePct:16.5,cutMeters:118420,speedDistribution:{'0':76,'1-100':8,'101-200':45,'201-280':155,'281-350':212},alarmMinutes:[{code:509,min:9},{code:1289,min:8},{code:1281,min:5},{code:97,min:3}],rows:[]},
+    events:{totalEvents:15,totalDurMin:96,events:[
+      {nr:1,t:'07:15',dur_min:3,cat:'Machine > Slowbelt',comment:'Belt spanning',registrator:'Op1'},
+      {nr:2,t:'08:10',dur_min:9,cat:'Formaat wisseling > 749→805mm',comment:'Bijbaan',registrator:'Op2'},
+      {nr:3,t:'08:45',dur_min:3,cat:'Machine > Sensor 509',comment:'Offset drift',registrator:'Op1'},
+      {nr:4,t:'09:55',dur_min:12,cat:'Formaat wisseling > 805→1020mm',comment:'Bijbaan storingen',registrator:'Op2'},
+      {nr:5,t:'11:15',dur_min:10,cat:'Kwaliteit > Halve maan',comment:'2x gevonden',registrator:'Op1'},
+      {nr:6,t:'11:45',dur_min:8,cat:'Machine > Alarm 1289',comment:'Rootcause onbekend',registrator:'Op1'},
+      {nr:7,t:'12:50',dur_min:8,cat:'Kwaliteit > Hoekjes dubbel',comment:'Bokken-instelling',registrator:'Op1'},
+      {nr:8,t:'13:30',dur_min:5,cat:'Machine > Alarm 1281',comment:'',registrator:'Op2'},
+      {nr:9,t:'13:50',dur_min:5,cat:'Operator > Snelheidsbeperking 170gsm',comment:'',registrator:'Op1'},
+      {nr:10,t:'14:05',dur_min:8,cat:'Formaat wisseling > 730→995mm',comment:'Lange wisseltijd',registrator:'Op1'},
     ]},
-    loadlist:{totalMT:41.3,totalNetProdM:118420,avgTonH:4.7,avgGsm:262,avgWidthMm:885,
-      orders:[..._dRan,..._dExtra]},
+    oeesluis:{oee:58.7,nt_rate:96.8,pl_rate:78.2,handling_rate:77.4,speed_factor:78.2,not_scheduled_min:0,planned_min:14,op_down_min:127,run_factor:90.1,no_sluis_factor:83.7,norun_min:46,sluis_min:82,stilstand:[
+      {cat:'Machine',omschrijving:'Machine > Slowbelt',aantal:5,duur_min:12,pct:9.4},
+      {cat:'Formaat wisseling',omschrijving:'Formaat wisseling > Overige',aantal:6,duur_min:21,pct:16.5},
+      {cat:'Operator',omschrijving:'Operator > Snelheidsbeperking',aantal:3,duur_min:15,pct:11.8},
+      {cat:'Kwaliteit',omschrijving:'Kwaliteit > Halve maan',aantal:2,duur_min:10,pct:7.9},
+      {cat:'Machine',omschrijving:'Machine > Sensor 509',aantal:3,duur_min:9,pct:7.1},
+      {cat:'Machine',omschrijving:'Machine > Alarm 1289',aantal:1,duur_min:8,pct:6.3},
+      {cat:'Kwaliteit',omschrijving:'Kwaliteit > Hoekjes dubbel',aantal:2,duur_min:8,pct:6.3},
+    ]}
   },
-  orderPot:{shiftDate:'08/04/26',gedraaid:_dRan,nietGedraaid:_dExtra,extraMin:127,extraOrders:_dExtra,extraUsedMin:127,extraMT:8.2,extraM:35602},
+  orderPrestatie:{orders:_dRan}
 };
 
 function startDemo(){
   STATE.calc=DEMO_DATA.calc;
   STATE.pot=DEMO_DATA.pot;
   STATE.ai=DEMO_DATA.ai;
-  STATE.orderPot=DEMO_DATA.orderPot;
   STATE.parsed=DEMO_DATA.parsed;
-  STATE.opstartAnalyse=calcOpstartAnalyse(STATE.orderPot,STATE.parsed);
+  STATE.orderPrestatie=DEMO_DATA.orderPrestatie;
+  STATE.opstartAnalyse=calcOpstartAnalyse(STATE.orderPrestatie,STATE.parsed);
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('dashboard').style.display='block';
@@ -952,274 +949,21 @@ function startDemo(){
   switchTab(0);
 }
 
-// ══ TAB NAV ══
+// ══ TAB NAV (renderers injected in Part B) ══
 function switchTab(n){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===n));
   document.querySelectorAll('.tab-pane').forEach((p,i)=>p.classList.toggle('active',i===n));
   [renderTab0,renderTab1,renderTab2,renderTab3,renderTab4,renderTab5,renderTab6,renderTab7][n]?.();
 }
-
-// ══ HELPERS ══
-function badge(p){return`<span class="badge ${p==='hoog'?'b-h':p==='laag'?'b-l':'b-m'}">${p||'middel'}</span>`;}
-function imprHTML(items){
-  if(!items?.length)return'<p style="color:var(--muted);font-size:.82rem">Geen verbeterpunten.</p>';
-  return items.map(v=>`<div class="impr"><div>${badge(v.prioriteit)}</div><div class="ib"><div class="ib-title">${v.titel||'Verbetering'}</div><div class="ib-desc">${v.omschrijving||''}</div>${v.winst_min>0?`<div class="ib-win">⏱ +${v.winst_min} min</div>`:''}</div></div>`).join('');
-}
-function progHTML(lbl,val,goal,color){
-  const pct=Math.min(100,Math.max(0,val||0));
-  return`<div class="prog"><div class="prog-lbl"><span>${lbl}</span><span style="color:${color}">${fPct(pct)} <small style="color:var(--muted)">/ doel ${goal}%</small></span></div><div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${color}"></div><div class="prog-goal" style="left:${Math.min(100,goal)}%"></div></div></div>`;
-}
-function topTbl(items){
-  if(!items?.length)return'<p style="color:var(--muted);font-size:.82rem">–</p>';
-  return`<div class="tbl-wrap"><table><thead><tr><th>Oorzaak</th><th>Events</th><th>Min</th></tr></thead><tbody>${items.map(i=>`<tr><td>${i.naam||'–'}</td><td>${i.events||0}</td><td>${i.min||0}</td></tr>`).join('')}</tbody></table></div>`;
-}
-function topChart(id,items,color){
-  if(!items?.length)return;
-  mkC(id,{type:'bar',data:{labels:items.map(i=>i.naam||'?'),datasets:[{label:'Min',data:items.map(i=>i.min||0),backgroundColor:color+'99',borderColor:color,borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
-}
-
-// ══ TAB 0: OVERZICHT ══
-function renderTab0(){
-  const p=STATE.parsed;const c=STATE.calc||{};const pot=STATE.pot||{};const ai=STATE.ai||{};
-  const ll=p.loadlist||{};const sense=p.sense||{};
-  const mScore=ai.machine?.score||0;const oScore=ai.operator?.score||0;const kScore=ai.kwaliteit?.score||0;
-  const mMin=ai.machine?.total_min||0;const oMin=ai.operator?.total_min||0;const kMin=ai.kwaliteit?.total_min||0;
-  const sluisMin=p.sluis?.totalSluisDowntimeMin||0;
-  const opstartMin=STATE.opstartAnalyse?.verliesMin||0;
-  const oMinTotal=oMin+opstartMin;
-  const prodMin=Math.max(0,(c.apt||0)-(c.opDownMin||0));
-  document.getElementById('tab-0').innerHTML=`
-  <div class="kpi-row">
-    <div class="kpi kw"><div class="kpi-lbl">Geproduceerd</div><div class="kpi-val">${fmt(ll.totalMT,2)}</div><div class="kpi-sub">metrieke ton</div></div>
-    <div class="kpi km"><div class="kpi-lbl">OEE</div><div class="kpi-val">${fPct(c.oee)}</div><div class="kpi-sub">Overall Equipment Effectiveness</div></div>
-    <div class="kpi km"><div class="kpi-lbl">Gem. snelheid</div><div class="kpi-val">${fmt(sense.avgRunningSpeed,0)}</div><div class="kpi-sub">m/min (lopend)</div></div>
-    <div class="kpi ks"><div class="kpi-lbl">Sluis open</div><div class="kpi-val">${fPct(sense.rejectGatePct)}</div><div class="kpi-sub">${fMin(sense.rejectGateOpenMinutes)}</div></div>
-  </div>
-  ${pot.s1?`<div class="win-card"><div class="wi"><div class="wl">Realistisch potentieel</div><div class="wv">${fMT(pot.s3)}</div><div class="ws">+${fMT((pot.s3||0)-(pot.s1||0))} t.o.v. werkelijk</div></div><div style="width:1px;background:#86efac;flex-shrink:0"></div><div class="wi"><div class="wl">Maximaal potentieel</div><div class="wv">${fMT(pot.s5)}</div><div class="ws">+${fMT((pot.s5||0)-(pot.s1||0))} theoretisch</div></div></div>`:''}
-  <div class="row2">
-    <div class="card"><div class="card-title">Tijdverdeling shift</div><div style="max-width:280px;margin:0 auto"><canvas id="c-donut"></canvas></div></div>
-    <div class="card"><div class="card-title">Verlies per categorie (min)</div><canvas id="c-verlies"></canvas></div>
-  </div>
-  <div class="row3">
-    <div class="card" style="border-top:3px solid var(--machine)"><div class="score-wrap"><div class="score-ring ring-m">${mScore}</div><div class="score-info"><div class="si-lbl">Score /100</div><div class="si-name">Machine</div></div></div><div style="font-size:.8rem;color:var(--muted)">${ai.machine?.verdict||'–'}</div></div>
-    <div class="card" style="border-top:3px solid var(--operator)"><div class="score-wrap"><div class="score-ring ring-o">${oScore}</div><div class="score-info"><div class="si-lbl">Score /100</div><div class="si-name">Operator</div></div></div><div style="font-size:.8rem;color:var(--muted)">${ai.operator?.verdict||'–'}</div></div>
-    <div class="card" style="border-top:3px solid var(--kwal)"><div class="score-wrap"><div class="score-ring ring-k">${kScore}</div><div class="score-info"><div class="si-lbl">Score /100</div><div class="si-name">Kwaliteit</div></div></div><div style="font-size:.8rem;color:var(--muted)">${ai.kwaliteit?.verdict||'–'}</div></div>
-  </div>`;
-  mkC('c-donut',{type:'doughnut',data:{labels:['Productie','Ongepland stilstand','Gepland','Niet ingepland'],datasets:[{data:[prodMin,c.opDownMin||0,c.planDownMin||0,c.notSchedMin||0],backgroundColor:[C.win,C.kwal,C.warn,C.neutral],borderWidth:2}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});
-  mkC('c-verlies',{type:'bar',data:{labels:['Machine','Operator'+( opstartMin>0?' (incl. opstart)':''),'Kwaliteit','Sluis'],datasets:[{label:'Minuten',data:[mMin,oMinTotal,kMin,sluisMin],backgroundColor:[C.machine+'cc',C.operator+'cc',C.kwal+'cc',C.sluis+'cc'],borderColor:[C.machine,C.operator,C.kwal,C.sluis],borderWidth:1,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-}
-
-// ══ TAB 1: POTENTIEEL ══
-function renderTab1(){
-  const pot=STATE.pot||{s1:0,s2:0,s3:0,s4:0,s5:0,sGain:0,eGain:0,sp280Gain:0,avgSpd:0};
-  const calc=STATE.calc||{apt:SHIFT_MIN};
-  const fmtEv=(STATE.parsed.events?.events||[]).filter(e=>{const c=(e.cat||'').toLowerCase();return c.includes('formaat')||c.includes('format')||c.includes('wisseling');}).length;
-  document.getElementById('tab-1').innerHTML=`
-  <div class="kpi-row">
-    <div class="kpi"><div class="kpi-lbl">Werkelijk</div><div class="kpi-val">${fMT(pot.s1)}</div><div class="kpi-sub">geproduceerd</div></div>
-    <div class="kpi ks"><div class="kpi-lbl">Na sluis fix</div><div class="kpi-val">${fMT(pot.s2)}</div><div class="kpi-sub">+${fMT(pot.sGain)}</div></div>
-    <div class="kpi kw"><div class="kpi-lbl">Realistisch</div><div class="kpi-val">${fMT(pot.s3)}</div><div class="kpi-sub">+${fMT((pot.s3||0)-(pot.s1||0))}</div></div>
-    <div class="kpi"><div class="kpi-lbl">Maximum</div><div class="kpi-val">${fMT(pot.s5)}</div><div class="kpi-sub">theoretisch max</div></div>
-  </div>
-  <div class="card"><div class="card-title">Scenariobalk — cumulatieve winst</div>
-  <div class="scen-strip">
-    <div class="ss ss0"><div class="sl">Werkelijk</div><div class="sv">${fMT(pot.s1)}</div><div class="sd">Baseline</div></div>
-    <div class="ss ss1"><div class="sl">+Rejectgate −50%</div><div class="sv">${fMT(pot.s2)}</div><div class="sd">+${fMT(pot.sGain)}</div></div>
-    <div class="ss ss2"><div class="sl">+Events fixes</div><div class="sv">${fMT(pot.s3)}</div><div class="sd">+${fMT(pot.eGain)}</div></div>
-    <div class="ss ss3"><div class="sl">+280 m/min</div><div class="sv">${fMT(pot.s4)}</div><div class="sd">+${fMT(pot.sp280Gain)}</div></div>
-    <div class="ss ss4"><div class="sl">Max 350 m/min</div><div class="sv">${fMT(pot.s5)}</div><div class="sd">Theoretisch max</div></div>
-  </div></div>
-  <div class="card"><div class="card-title">Concrete stappen</div>
-  <ul class="protocol">
-    <li><strong>Rejectgate downtime halveren</strong> — Optimaliseer sluisparameters bij formaatwissels en reduceer herinsteltijd. Potentieel: <strong>+${fMT(pot.sGain)}</strong></li>
-    <li><strong>Formaatwisseltijd reduceren</strong> — ${fmtEv} formaatwisselevents. Standaardiseer wisselprocedure en bereid materialen voor. Potentieel: <strong>+${fMT(pot.eGain)}</strong></li>
-    <li><strong>Rijsnelheid naar 280 m/min</strong> — Huidige gem. rijsnelheid: ${fmt(pot.avgSpd,0)} m/min. Optimaliseer instelparameters voor hogere snelheid zonder kwaliteitsverlies. Potentieel: <strong>+${fMT(pot.sp280Gain)}</strong></li>
-    <li><strong>Machine uptime maximaliseren</strong> — Predictief onderhoud op basis van alarmpatronen, snelle interventie bij storingen, reduceer reactietijd.</li>
-    <li><strong>Theoretisch maximum: ${fMT(pot.s5)}</strong> — Volledige APT (${fMin(calc.apt)}) op 350 m/min. Streefwaarde bij optimale procesbeheersing.</li>
-  </ul></div>
-  ${(()=>{
-    const pot2=STATE.pot||{};
-    const{opDownMin=0,avgSpd=0,extraM=0,extraMT=0,realistischExtraM=0,realistischExtraMT=0,avgTonH=0,hasLoadlist=false}=pot2;
-    if(!avgSpd||!opDownMin)return'';
-    const tpmNote=hasLoadlist?'':'<small style="color:var(--muted)"> (geschat op basis van gem. GSM &amp; breedte)</small>';
-    return`<div class="card" style="border-top:3px solid var(--machine)">
-      <div class="card-title">Stilstandpotentieel op basis van snelheid</div>
-      <p style="font-size:.85rem;color:var(--muted);line-height:1.65;margin-bottom:1rem">
-        Op basis van <strong>${fMin(opDownMin)}</strong> ongeplande stilstand en een gemiddelde snelheid van
-        <strong>${fmt(avgSpd,0)} m/min</strong> had de machine extra kunnen snijden.
-        Bij een gemiddeld rendement van <strong>${fmt(avgTonH,1)} ton/u</strong>${tpmNote}:
-      </p>
-      <div class="row2" style="margin-bottom:0">
-        <div style="background:var(--bg);border:1px solid var(--border);border-top:3px solid var(--win);border-radius:var(--r);padding:1rem">
-          <div class="kpi-lbl">Volledige eliminatie stilstand</div>
-          <div style="font-size:1.55rem;font-weight:800;color:var(--win);margin:.2rem 0 .1rem">${fmt(extraM,0)} m</div>
-          <div class="kpi-sub">≈ ${fMT(extraMT)} extra</div>
-        </div>
-        <div style="background:var(--bg);border:1px solid var(--border);border-top:3px solid var(--machine);border-radius:var(--r);padding:1rem">
-          <div class="kpi-lbl">Realistisch (60% reductie)</div>
-          <div style="font-size:1.55rem;font-weight:800;color:var(--machine);margin:.2rem 0 .1rem">${fmt(realistischExtraM,0)} m</div>
-          <div class="kpi-sub">≈ ${fMT(realistischExtraMT)} extra</div>
-        </div>
-      </div>
-    </div>`;
-  })()}`;
-}
-
-// ══ TAB 2: OEE ══
-function renderTab2(){
-  const c=STATE.calc||{};const p=STATE.parsed;const ll=p.loadlist||{};
-  const cats=p.oee?.stilstandCategories||[];const orders=ll.orders||[];
-  document.getElementById('tab-2').innerHTML=`
-  <div class="kpi-row">
-    <div class="kpi km"><div class="kpi-lbl">OEE</div><div class="kpi-val">${fPct(c.oee)}</div><div class="kpi-sub">doel: 65%</div></div>
-    <div class="kpi"><div class="kpi-lbl">Beschikbaarheid</div><div class="kpi-val">${fPct(c.beschikb)}</div><div class="kpi-sub">doel: 85%</div></div>
-    <div class="kpi"><div class="kpi-lbl">Prestatie</div><div class="kpi-val">${fPct(c.prestatie)}</div><div class="kpi-sub">doel: 80%</div></div>
-    <div class="kpi"><div class="kpi-lbl">Kwaliteit</div><div class="kpi-val">${fPct(c.kwal)}</div><div class="kpi-sub">doel: 95%</div></div>
-  </div>
-  <div class="card">
-    <div class="oee-form">OEE = <span>${fPct(c.beschikb)}</span> × <span>${fPct(c.prestatie)}</span> × <span>${fPct(c.kwal)}</span> = <span>${fPct(c.oee)}</span></div>
-    ${progHTML('Beschikbaarheid',c.beschikb,85,C.machine)}
-    ${progHTML('Prestatie',c.prestatie,80,C.operator)}
-    ${progHTML('Kwaliteit',c.kwal,95,C.kwal)}
-    ${progHTML('OEE',c.oee,65,'#374151')}
-  </div>
-  ${cats.length?`<div class="card"><div class="card-title">Stilstand categorieën (OEE rapport)</div><div class="tbl-wrap"><table><thead><tr><th>Categorie</th><th>Aantal</th><th>Duur</th><th>Min</th><th>%</th></tr></thead><tbody>${cats.map(c=>`<tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.pad}">${c.pad}</td><td>${c.aantal}</td><td>${c.duur_str||'–'}</td><td>${fmt(c.duur_min,0)}</td><td>${fmt(c.pct,1)}%</td></tr>`).join('')}</tbody></table></div></div>`:''}
-  ${orders.length?`<div class="card"><div class="card-title">Orders <small style="color:var(--muted);font-weight:400">(ton/u: <span class="c-good">groen &gt;4</span> · <span class="c-warn">amber 2–4</span> · <span class="c-bad">rood &lt;2</span>)</small></div><div class="tbl-wrap"><table><thead><tr><th>Order</th><th>Product</th><th>GSM</th><th>Breed mm</th><th>Netto m</th><th>MT</th><th>Ton/u</th></tr></thead><tbody>${orders.map(o=>{const cls=o.tonH>4?'c-good':o.tonH>2?'c-warn':'c-bad';return`<tr><td>${o.order}</td><td>${o.product||'–'}</td><td>${o.gsm||'–'}</td><td>${o.widthMm||'–'}</td><td>${fmt(o.netProdM,0)}</td><td>${fmt(o.mt,2)}</td><td class="${cls}">${fmt(o.tonH,2)}</td></tr>`;}).join('')}</tbody></table></div></div>`:''}`;
-}
-
-// ══ TAB 3: SLUIS ══
-function renderTab3(){
-  const s=STATE.parsed.sluis||{};const sense=STATE.parsed.sense||{};const ai=STATE.ai?.sluis||{};
-  const top=ai.top_events||[];
-  document.getElementById('tab-3').innerHTML=`
-  <div class="kpi-row">
-    <div class="kpi ks"><div class="kpi-lbl">RunFactor</div><div class="kpi-val">${s.runFactor!==null&&s.runFactor!==undefined?fPct(s.runFactor):'–'}</div><div class="kpi-sub">machine looptijd</div></div>
-    <div class="kpi ks"><div class="kpi-lbl">NoSluisFactor</div><div class="kpi-val">${s.noSluisFactor!==null&&s.noSluisFactor!==undefined?fPct(s.noSluisFactor):'–'}</div><div class="kpi-sub">sluis gesloten</div></div>
-    <div class="kpi"><div class="kpi-lbl">Sluis downtime</div><div class="kpi-val">${fMin(s.totalSluisDowntimeMin)}</div><div class="kpi-sub">${fPct(sense.rejectGatePct)} van shift</div></div>
-  </div>
-  ${ai.analyse?`<div class="verdict vs">${ai.analyse}</div>`:''}
-  ${s.sluisEvents?.length?`<div class="card"><div class="card-title">Sluis events (sluis rapport)</div><div class="tbl-wrap"><table><thead><tr><th>Event</th><th>Aantal</th><th>Min</th><th>%</th></tr></thead><tbody>${s.sluisEvents.map(e=>`<tr><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis" title="${e.pad}">${e.pad}</td><td>${e.aantal}</td><td>${fmt(e.duur_min,0)}</td><td>${fmt(e.pct,1)}%</td></tr>`).join('')}</tbody></table></div></div>`:''}
-  ${top.length?`<div class="card"><div class="card-title">Top sluis-events (AI)</div><div class="tbl-wrap"><table><thead><tr><th>Label</th><th>Aantal</th><th>Min</th></tr></thead><tbody>${top.map(e=>`<tr><td>${e.label}</td><td>${e.aantal}</td><td>${e.min}</td></tr>`).join('')}</tbody></table></div><canvas id="c-sluis" style="margin-top:1rem;max-height:200px"></canvas></div>`:''}
-  ${ai.verbeteringen?.length?`<div class="card"><div class="card-title">Verbeterpunten sluis</div>${imprHTML(ai.verbeteringen)}</div>`:''}`;
-  if(top.length)mkC('c-sluis',{type:'bar',data:{labels:top.map(e=>e.label),datasets:[{label:'Min',data:top.map(e=>e.min),backgroundColor:C.sluis+'99',borderColor:C.sluis,borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-}
-
-// ══ TAB 4: MACHINE ══
-function renderTab4(){
-  const ai=STATE.ai?.machine||{};const sense=STATE.parsed.sense||{};
-  const dist=sense.speedDistribution||{};const alarms=sense.alarmMinutes||[];
-  document.getElementById('tab-4').innerHTML=`
-  <div class="score-wrap"><div class="score-ring ring-m">${ai.score||0}</div><div class="score-info"><div class="si-lbl">Machine score /100</div><div class="si-name">Machine analyse</div></div></div>
-  ${ai.verdict?`<div class="verdict vm">${ai.verdict}</div>`:''}
-  <div class="row2">
-    <div class="card"><div class="card-title">Top oorzaken</div>${topTbl(ai.top_oorzaken)}</div>
-    <div class="card"><div class="card-title">Verdeling (min)</div><canvas id="c-mach" style="max-height:220px"></canvas></div>
-  </div>
-  ${ai.alarm_analyse?`<div class="card"><div class="card-title">Alarmcode analyse (AI)</div><div class="verdict vm" style="margin:0">${ai.alarm_analyse}</div></div>`:''}
-  ${alarms.length?`<div class="card"><div class="card-title">Alarmcodes actief (SenSe)</div><div class="tbl-wrap"><table><thead><tr><th>Alarmcode</th><th>Min actief</th><th>Klasse</th></tr></thead><tbody>${alarms.map(a=>`<tr><td>Alarm ${a.code}</td><td class="${a.min>30?'c-bad':a.min>10?'c-warn':'c-good'}">${a.min}</td><td>${a.min>30?'Kritiek':a.min>10?'Aandacht':'Licht'}</td></tr>`).join('')}</tbody></table></div></div>`:''}
-  <div class="card"><div class="card-title">Snelheidsverdeling (min per bucket)</div><canvas id="c-speed" style="max-height:220px"></canvas></div>
-  ${ai.verbeteringen?.length?`<div class="card"><div class="card-title">Verbeterpunten machine</div>${imprHTML(ai.verbeteringen)}</div>`:''}`;
-  topChart('c-mach',ai.top_oorzaken,C.machine);
-  const dk=Object.keys(dist);const dv=Object.values(dist);
-  mkC('c-speed',{type:'bar',data:{labels:dk.map(l=>l+' m/min'),datasets:[{label:'Min',data:dv.map(v=>Math.round(v*10)/10),backgroundColor:[C.kwal+'99',C.warn+'99',C.operator+'99',C.machine+'99',C.win+'99'],borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'Minuten'}}}}});
-}
-
-// ══ TAB 5: OPERATOR ══
-function renderTab5(){
-  const ai=STATE.ai?.operator||{};
-  const oa=STATE.opstartAnalyse;
-  // Merge opstart verbeterpunt into operator verbeteringen
-  const allVerbeteringen=oa?.verbeterpunt?[oa.verbeterpunt,...(ai.verbeteringen||[])]:(ai.verbeteringen||[]);
-  // Opstartprestatie card HTML
-  function opstartCard(){
-    if(!oa||!oa.orders?.length)return'';
-    const {gem,trage,orders,verliesM,verliesMT,verliesMin}=oa;
-    if(gem<=2){
-      return`<div class="card" style="border-top:3px solid var(--win)"><div class="card-title">Opstartprestatie</div><div class="verdict" style="border-color:var(--win);background:var(--bg)">Goede opstartprestatie — gemiddeld <strong>${fmt(gem,1)} min</strong> over ${orders.length} orders (norm: 2 min)</div></div>`;
-    }
-    const trageRows=trage.map(o=>`<tr><td>${o.order}</td><td>${o.product||'–'}</td><td class="c-bad">${fmt(o.opstart_min,1)} min</td><td>${fmt(o.opstart_min-2,1)} min boven norm</td></tr>`).join('');
-    const trageTable=trage.length?`<div class="tbl-wrap" style="margin-top:.7rem"><table><thead><tr><th>Order</th><th>Product</th><th>Opstarttijd</th><th>Overschrijding</th></tr></thead><tbody>${trageRows}</tbody></table></div>`:'';
-    const statsHTML=`<div style="font-size:.83rem;line-height:1.9;margin-top:.5rem">
-      <div>Gem. opstarttijd: <strong class="${gem>5?'c-bad':'c-warn'}">${fmt(gem,1)} min</strong> <small style="color:var(--muted)">(norm: 2 min)</small></div>
-      <div>Orders te traag opgestart (&gt;5 min): <strong>${trage.length} van ${orders.length}</strong></div>
-      <div>Verloren productie: <strong>${fmt(verliesM,0)} m</strong> / <strong>${fmt(verliesMT,2)} MT</strong></div>
-      <div>Totale opstarttijdverlies: <strong>${fmt(verliesMin,1)} min</strong></div>
-    </div>${trageTable}`;
-    if(gem>5){
-      return`<div class="card" style="border-top:3px solid var(--kwal)"><div class="card-title">Opstartprestatie <span class="badge b-h" style="margin-left:.4rem">hoog</span></div>
-        <div style="font-size:.85rem;font-weight:600;color:var(--kwal);margin-bottom:.4rem">Structureel te langzame opstart — gemiddeld ${fmt(gem,1)} min over ${orders.length} orders. Dit kost elke shift ${fmt(verliesMT,2)} MT.</div>
-        ${statsHTML}</div>`;
-    }
-    return`<div class="card" style="border-top:3px solid var(--warn)"><div class="card-title">Opstartprestatie</div>
-      <div class="verdict vo" style="margin-bottom:.6rem">Let op: gemiddelde opstarttijd boven norm</div>
-      ${statsHTML}</div>`;
-  }
-  document.getElementById('tab-5').innerHTML=`
-  <div class="score-wrap"><div class="score-ring ring-o">${ai.score||0}</div><div class="score-info"><div class="si-lbl">Operator score /100</div><div class="si-name">Operator analyse</div></div></div>
-  ${ai.verdict?`<div class="verdict vo">${ai.verdict}</div>`:''}
-  ${opstartCard()}
-  <div class="row2">
-    <div class="card"><div class="card-title">Top oorzaken</div>${topTbl(ai.top_oorzaken)}</div>
-    <div class="card"><div class="card-title">Verdeling (min)</div><canvas id="c-op" style="max-height:220px"></canvas></div>
-  </div>
-  ${allVerbeteringen.length?`<div class="card"><div class="card-title">Verbeterpunten operator</div>${imprHTML(allVerbeteringen)}</div>`:''}
-  ${ai.events?.length?`<div class="card"><div class="card-title">Operator events</div><div class="tbl-wrap"><table><thead><tr><th>Tijd</th><th>Min</th><th>Event</th><th>Oorzaak</th></tr></thead><tbody>${ai.events.map(e=>`<tr><td>${e.t||'–'}</td><td>${e.dur_min||0}</td><td>${e.label||'–'}</td><td>${e.oorzaak||'–'}</td></tr>`).join('')}</tbody></table></div></div>`:''}`;
-  topChart('c-op',ai.top_oorzaken,C.operator);
-}
-
-// ══ TAB 6: KWALITEIT ══
-function renderTab6(){
-  const ai=STATE.ai?.kwaliteit||{};const prot=ai.protocol||[];
-  document.getElementById('tab-6').innerHTML=`
-  <div class="score-wrap"><div class="score-ring ring-k">${ai.score||0}</div><div class="score-info"><div class="si-lbl">Kwaliteit score /100</div><div class="si-name">Kwaliteit analyse</div></div></div>
-  ${ai.verdict?`<div class="verdict vk">${ai.verdict}</div>`:''}
-  <div class="row2">
-    <div class="card"><div class="card-title">Top oorzaken</div>${topTbl(ai.top_oorzaken)}</div>
-    <div class="card"><div class="card-title">Verdeling (min)</div><canvas id="c-kw" style="max-height:220px"></canvas></div>
-  </div>
-  ${ai.verbeteringen?.length?`<div class="card"><div class="card-title">Verbeterpunten kwaliteit</div>${imprHTML(ai.verbeteringen)}</div>`:''}
-  ${prot.length?`<div class="card"><div class="card-title">🔧 5-stappen kwaliteitsprotocol</div><ol class="protocol">${prot.map(s=>`<li>${s}</li>`).join('')}</ol></div>`:''}
-  ${ai.events?.length?`<div class="card"><div class="card-title">Kwaliteit events</div><div class="tbl-wrap"><table><thead><tr><th>Tijd</th><th>Min</th><th>Event</th><th>Oorzaak</th></tr></thead><tbody>${ai.events.map(e=>`<tr><td>${e.t||'–'}</td><td>${e.dur_min||0}</td><td>${e.label||'–'}</td><td>${e.oorzaak||'–'}</td></tr>`).join('')}</tbody></table></div></div>`:''}`;
-  topChart('c-kw',ai.top_oorzaken,C.kwal);
-}
-
-// ══ TAB 7: ORDERS & SNELHEID ══
-function renderTab7(){
-  const op=STATE.orderPot||{};
-  const gedraaid=op.gedraaid||[];
-  const extraOrders=op.extraOrders||[];
-  const extraMin=op.extraMin||0;
-  // Build speed curve points
-  const scPoints=[];for(let sz=300;sz<=1600;sz+=10)scPoints.push({x:sz,y:Math.round(maxSpeedForOrder(sz)*10)/10});
-  document.getElementById('tab-7').innerHTML=`
-  <div class="card">
-    <div class="card-title">Speed curve — vellengrootte → max snelheid</div>
-    <canvas id="c-spdcurve" style="max-height:260px"></canvas>
-  </div>
-  <div class="card">
-    <div class="card-title">Gedraaide orders${op.shiftDate?' — '+op.shiftDate:''} <small style="color:var(--muted);font-weight:400">(snelheidsbenutting: <span class="c-good">groen ≥85%</span> · <span class="c-warn">amber ≥70%</span> · <span class="c-bad">rood &lt;70%</span>)</small></div>
-    ${gedraaid.length?`<div class="tbl-wrap"><table><thead><tr><th>Order</th><th>Product</th><th>GSM</th><th>Vellen mm</th><th>Max m/min</th><th>Werkelijk</th><th>Benutting%</th><th>Prod.m</th><th>Ton/u</th><th>MT</th></tr></thead><tbody>
-    ${gedraaid.map(o=>{const cls=o.speedUtil>=85?'c-good':o.speedUtil>=70?'c-warn':'c-bad';return`<tr><td>${o.order}</td><td>${o.product||'–'}</td><td>${o.gsm||'–'}</td><td>${o.vellengrootte||o.widthMm||'–'}</td><td>${fmt(o.maxSpd,0)}</td><td>${fmt(o.actualSpd,0)}</td><td class="${cls}">${fmt(o.speedUtil,1)}%</td><td>${fmt(o.netProdM,0)}</td><td>${fmt(o.tonH,2)}</td><td>${fmt(o.mt,2)}</td></tr>`;}).join('')}
-    </tbody></table></div>`:'<p style="color:var(--muted);font-size:.82rem">Geen gedraaide orders gevonden voor de shift datum.</p>'}
-  </div>
-  ${extraOrders.length?`<div class="card" style="border-top:3px solid var(--win)">
-    <div class="card-title">Extra orders die erin hadden gepast <small style="color:var(--muted);font-weight:400">${fMin(extraMin)} ongeplande stilstand beschikbaar</small></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Order</th><th>Product</th><th>GSM</th><th>Est.Run (min)</th><th>Verwachte MT</th></tr></thead><tbody>
-    ${extraOrders.map(o=>`<tr><td>${o.order}</td><td>${o.product||'–'}</td><td>${o.gsm||'–'}</td><td>${fmt(o.estRun,0)}</td><td>${fmt(o.mt,2)}</td></tr>`).join('')}
-    </tbody></table></div>
-    <div style="margin-top:.8rem;padding:.75rem;background:var(--bg);border-radius:8px;font-size:.88rem;font-weight:700;color:var(--win)">${extraOrders.length} orders · ${fMT(op.extraMT)} · ${fmt(op.extraM,0)} meter extra mogelijk geweest</div>
-  </div>`:''}
-  <div class="card">
-    <div class="card-title">Snelheidsbenutting per order (gedraaid)</div>
-    <canvas id="c-speedutil" style="max-height:200px"></canvas>
-  </div>`;
-  // Speed curve chart
-  mkC('c-spdcurve',{type:'line',data:{datasets:[{label:'Max snelheid (m/min)',data:scPoints,borderColor:C.machine,backgroundColor:C.machine+'22',fill:true,pointRadius:0,tension:0.3}]},options:{responsive:true,scales:{x:{type:'linear',min:300,max:1600,title:{display:true,text:'Vellengrootte (mm)'}},y:{min:0,max:380,title:{display:true,text:'Max snelheid (m/min)'}}},plugins:{legend:{display:false}}}});
-  // Speed utilization bar chart
-  if(gedraaid.length){
-    mkC('c-speedutil',{type:'bar',data:{labels:gedraaid.map(o=>o.order),datasets:[{label:'Benutting %',data:gedraaid.map(o=>Math.round(o.speedUtil*10)/10),backgroundColor:gedraaid.map(o=>o.speedUtil>=85?C.win+'cc':o.speedUtil>=70?C.warn+'cc':C.kwal+'cc'),borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:110,title:{display:true,text:'Snelheidsbenutting %'}}}}});
-  }
-}
+// Placeholders — overwritten by Part B
+function renderTab0(){}
+function renderTab1(){}
+function renderTab2(){}
+function renderTab3(){}
+function renderTab4(){}
+function renderTab5(){}
+function renderTab6(){}
+function renderTab7(){}
 </script>
 </body>
 </html>

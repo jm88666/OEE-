@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp admin2.html admin.html)",
+      "Bash(cp jm-report2.html jm-report.html)",
+      "Bash(cp login2.html login.html)",
+      "Bash(cp reports2.html reports.html)"
+    ]
+  }
+}

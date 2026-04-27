@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JMAnalyzeTool v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060709;--g:#00e5a0;--g2:#00b87a;
+  --amber:#f59e0b;--red:#ff4757;--blue:#60a5fa;--purple:#a78bfa;
+  --text:#f0f2fa;--muted:#4a5070;--dim:#252838;
+  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);
+  --glass:rgba(255,255,255,.03);--glass2:rgba(255,255,255,.06);
+}
+html,body,#root{height:100%;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.syne{font-family:'Syne',sans-serif;font-weight:800}
+.mono{font-family:'Space Mono',monospace}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.025;pointer-events:none;z-index:1000}
+.glass{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:16px}
+.btn-glow{background:var(--g);color:#020c07;border:none;border-radius:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(0,229,160,.35),0 4px 12px rgba(0,0,0,.4);transition:all .2s}
+.btn-glow:hover{box-shadow:0 0 36px rgba(0,229,160,.55),0 6px 20px rgba(0,0,0,.5);transform:translateY(-1px)}
+.btn-ghost{background:var(--glass);color:var(--text);border:1px solid var(--border2);border-radius:9px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;backdrop-filter:blur(8px);transition:all .2s}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef} = React;
+
+const C={
+  bg:'#060709',g:'#00e5a0',g2:'#00b87a',
+  amber:'#f59e0b',red:'#ff4757',blue:'#60a5fa',purple:'#a78bfa',
+  text:'#f0f2fa',muted:'#4a5070',dim:'#252838',
+  border:'rgba(255,255,255,.06)',border2:'rgba(255,255,255,.1)',
+  glass:'rgba(255,255,255,.03)',glass2:'rgba(255,255,255,.06)',
+};
+
+// ── SHARED ────────────────────────────────────────────────────
+function MeshBg({c1=C.g,c2=C.blue,op=.12}){
+  return(
+    <div style={{position:'fixed',inset:0,pointerEvents:'none',overflow:'hidden',zIndex:0}}>
+      <div style={{position:'absolute',top:'-20%',left:'-10%',width:'60%',height:'60%',background:`radial-gradient(ellipse,${c1}${Math.round(op*255).toString(16).padStart(2,'0')} 0%,transparent 70%)`,filter:'blur(60px)'}}/>
+      <div style={{position:'absolute',bottom:'-20%',right:'-10%',width:'55%',height:'55%',background:`radial-gradient(ellipse,${c2}${Math.round(op*.7*255).toString(16).padStart(2,'0')} 0%,transparent 70%)`,filter:'blur(80px)'}}/>
+      <div style={{position:'absolute',top:'40%',left:'35%',width:'35%',height:'35%',background:'radial-gradient(ellipse,rgba(167,139,250,.12) 0%,transparent 70%)',filter:'blur(50px)'}}/>
+    </div>
+  );
+}
+
+function Logo({size=20}){
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:10}}>
+      <div style={{width:size+4,height:size+4,borderRadius:8,background:`linear-gradient(135deg,${C.g},${C.blue})`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 0 12px ${C.g}44`}}>
+        <svg width={size*.6} height={size*.6} viewBox="0 0 16 16" fill="none">
+          <polyline points="1,12 5,7 8,10 11,4 15,7" stroke="#020c07" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <div className="syne" style={{fontSize:size*.75,letterSpacing:'-.03em'}}>JM<span style={{color:C.g}}>Analyze</span>Tool</div>
+    </div>
+  );
+}
+
+function Nav({screen,setScreen}){
+  const links=[{id:'builder',label:'Report Builder'},{id:'reports',label:'Rapporten'},{id:'admin',label:'Beheer'}];
+  return(
+    <nav style={{position:'sticky',top:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 28px',height:54,background:'rgba(6,7,9,.85)',backdropFilter:'blur(20px)',borderBottom:`1px solid ${C.border}`}}>
+      <div style={{display:'flex',alignItems:'center',gap:32}}>
+        <Logo/>
+        <div style={{display:'flex',gap:2}}>
+          {links.map(l=>(
+            <button key={l.id} onClick={()=>setScreen(l.id)} style={{background:screen===l.id?C.glass2:'none',border:'none',color:screen===l.id?C.text:C.muted,padding:'6px 13px',borderRadius:8,cursor:'pointer',fontFamily:'Space Grotesk',fontSize:13,fontWeight:600,transition:'all .15s'}}>{l.label}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <div style={{width:30,height:30,borderRadius:'50%',background:`linear-gradient(135deg,${C.g},${C.blue})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:C.bg,boxShadow:`0 0 10px ${C.g}44`}}>JM</div>
+        <span style={{fontSize:12,color:C.muted}}>jm@metsa.nl</span>
+      </div>
+    </nav>
+  );
+}
+
+function Badge({children,color=C.g,small=false}){
+  return(<span style={{display:'inline-flex',alignItems:'center',gap:4,padding:small?'1px 6px':'3px 9px',borderRadius:99,background:`${color}18`,border:`1px solid ${color}40`,color,fontSize:small?10:11,fontWeight:700,letterSpacing:'.03em'}}>{children}</span>);
+}
+
+function SL({children,accent}){
+  return(
+    <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',color:accent?'rgba(255,255,255,.35)':'rgba(255,255,255,.2)',marginBottom:14,display:'flex',alignItems:'center',gap:8}}>
+      {accent&&<div style={{width:14,height:2,background:accent,borderRadius:1,boxShadow:`0 0 6px ${accent}`,flexShrink:0}}/>}
+      {children}
+    </div>
+  );
+}
+
+function RadialKpi({label,value,sub,pct,color=C.g,unit='%'}){
+  const r=28,circ=2*Math.PI*r;
+  return(
+    <div className="glass" style={{padding:'16px 14px',textAlign:'center',position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',inset:0,borderRadius:16,background:`radial-gradient(ellipse at 50% 110%,${color}10 0%,transparent 60%)`}}/>
+      {pct!=null?(
+        <div style={{display:'flex',justifyContent:'center',marginBottom:6}}>
+          <svg width={66} height={66} viewBox="0 0 66 66">
+            <circle cx={33} cy={33} r={r} fill="none" stroke={C.dim} strokeWidth={5}/>
+            <circle cx={33} cy={33} r={r} fill="none" stroke={color} strokeWidth={5}
+              strokeDasharray={circ} strokeDashoffset={circ*(1-Math.min(pct,100)/100)}
+              strokeLinecap="round" transform="rotate(-90 33 33)"
+              style={{filter:`drop-shadow(0 0 5px ${color}88)`}}/>
+            <text x={33} y={37} textAnchor="middle" fill={color} fontFamily="Space Mono" fontSize={11} fontWeight={700}>{value}{unit}</text>
+          </svg>
+        </div>
+      ):(
+        <div className="mono" style={{fontSize:28,fontWeight:700,color,textShadow:`0 0 20px ${color}66`,marginBottom:6,lineHeight:1}}>{value}<span style={{fontSize:13,marginLeft:2}}>{unit}</span></div>
+      )}
+      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:C.muted,marginBottom:2}}>{label}</div>
+      {sub&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>{sub}</div>}
+    </div>
+  );
+}
+
+// ── 3D TIMELINE ───────────────────────────────────────────────
+function Timeline3D(){
+  const segs=[
+    {type:'run',s:0,e:.12,c:C.g},{type:'stop',s:.12,e:.16,c:C.red},
+    {type:'run',s:.16,e:.28,c:C.g},{type:'format',s:.28,e:.30,c:C.blue},
+    {type:'run',s:.30,e:.44,c:C.g},{type:'stop',s:.44,e:.51,c:C.red},
+    {type:'run',s:.51,e:.60,c:C.g},{type:'reject',s:.60,e:.63,c:C.amber},
+    {type:'run',s:.63,e:.72,c:C.g},{type:'stop',s:.72,e:.77,c:C.red},
+    {type:'run',s:.77,e:1,c:C.g},
+  ];
+  return(
+    <div style={{padding:'0 4px'}}>
+      <div style={{perspective:600,perspectiveOrigin:'50% 30%',marginBottom:16}}>
+        <div style={{transform:'rotateX(38deg)',transformOrigin:'center bottom',position:'relative',borderRadius:10,overflow:'hidden',height:56,boxShadow:'0 20px 40px rgba(0,0,0,.6)'}}>
+          <div style={{position:'absolute',inset:0,background:'#0c0e14'}}/>
+          {[.25,.5,.75].map(p=><div key={p} style={{position:'absolute',top:`${p*100}%`,left:0,right:0,height:1,background:'rgba(255,255,255,.04)'}}/>)}
+          {segs.map((s,i)=>(
+            <div key={i} style={{position:'absolute',top:0,bottom:0,left:`${s.s*100}%`,width:`${(s.e-s.s)*100}%`,background:s.type==='run'?`linear-gradient(180deg,${s.c}28,${s.c}14)`:`${s.c}55`,borderRight:s.type!=='run'?`1px solid ${s.c}88`:undefined,borderLeft:s.type!=='run'?`1px solid ${s.c}44`:undefined}}>
+              {s.type==='run'&&<div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${s.c}88,transparent)`}}/>}
+              {s.type!=='run'&&<div style={{position:'absolute',inset:0,background:'repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.15) 4px,rgba(0,0,0,.15) 8px)'}}/>}
+            </div>
+          ))}
+          <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent 0%,${C.g}88 20%,${C.g}44 60%,transparent 100%)`}}/>
+        </div>
+        <div style={{height:16,background:`linear-gradient(to bottom,rgba(0,229,160,.06),transparent)`,transform:'rotateX(38deg) translateY(1px)',transformOrigin:'top center',marginTop:-1}}/>
+      </div>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}>
+        {['05:30','07:30','09:30','11:30','13:30'].map(t=><span key={t} className="mono" style={{fontSize:10,color:C.muted}}>{t}</span>)}
+      </div>
+      <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+        {[['Lopend',C.g],['Stilstand',C.red],['Formaatwisseling',C.blue],['Sluis open',C.amber]].map(([l,c])=>(
+          <div key={l} style={{display:'flex',alignItems:'center',gap:5}}>
+            <div style={{width:10,height:6,borderRadius:2,background:c,boxShadow:`0 0 6px ${c}88`}}/>
+            <span style={{fontSize:11,color:C.muted}}>{l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── 3D BAR CHART ──────────────────────────────────────────────
+function Bar3D({label,value,max,color,unit='min',idx=0}){
+  const pct=Math.min(100,value/max*100);
+  const depth=8;
+  const barH=Math.max(4,pct*1.4);
+  return(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,flex:1}}>
+      <div className="mono" style={{fontSize:12,fontWeight:700,color,textShadow:`0 0 10px ${color}88`}}>{value}{unit}</div>
+      <div style={{position:'relative',width:36,height:140,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+        {/* 3D bar */}
+        <div style={{position:'relative',width:28,height:`${barH}%`,minHeight:4}}>
+          {/* Front face */}
+          <div style={{position:'absolute',inset:0,background:`linear-gradient(to top,${color}cc,${color})`,borderRadius:'4px 4px 0 0',boxShadow:`0 0 16px ${color}55`,transition:'height 1s ease'}}/>
+          {/* Top face */}
+          <div style={{position:'absolute',top:-depth*.6,left:depth*.6,right:-depth*.6,height:depth*.8,background:`${color}ee`,transform:'skewX(-45deg) scaleY(.5)',transformOrigin:'bottom left',borderRadius:'2px 2px 0 0'}}/>
+          {/* Right face */}
+          <div style={{position:'absolute',top:-depth*.5,right:-depth*.6,width:depth*.6,bottom:0,background:`${color}66`,transform:'skewY(-45deg)',transformOrigin:'top left'}}/>
+        </div>
+        {/* Floor line */}
+        <div style={{position:'absolute',bottom:0,left:-4,right:-4,height:1,background:'rgba(255,255,255,.12)'}}/>
+      </div>
+      <div style={{fontSize:10,color:C.muted,textAlign:'center',lineHeight:1.3,maxWidth:60}}>{label}</div>
+    </div>
+  );
+}
+
+// ── HORIZONTAL BAR ────────────────────────────────────────────
+function HBar({label,value,max,color,sub,unit=''}){
+  const pct=Math.min(100,value/max*100);
+  return(
+    <div style={{marginBottom:12}}>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+        <span style={{fontSize:12}}>{label}</span>
+        <span className="mono" style={{fontSize:12,color,fontWeight:700,textShadow:`0 0 8px ${color}66`}}>{value}{unit}</span>
+      </div>
+      <div style={{height:8,background:'rgba(255,255,255,.05)',borderRadius:4,overflow:'visible',position:'relative'}}>
+        <div style={{height:'100%',width:`${pct}%`,background:`linear-gradient(90deg,${color}99,${color})`,borderRadius:4,boxShadow:`0 0 10px ${color}66`,transition:'width 1s ease',position:'relative'}}>
+          <div style={{position:'absolute',right:-2,top:-3,width:14,height:14,borderRadius:'50%',background:color,boxShadow:`0 0 10px ${color}`,border:`2px solid ${C.bg}`}}/>
+        </div>
+      </div>
+      {sub&&<div style={{fontSize:10,color:C.muted,marginTop:3}}>{sub}</div>}
+    </div>
+  );
+}
+
+// ── SPEED HEATMAP ─────────────────────────────────────────────
+function SpeedHeatmap(){
+  // 32 time buckets (15min each ~8h shift)
+  const data=[0,0,280,295,260,310,0,290,275,280,290,0,305,295,280,0,260,270,280,0,295,300,0,285,275,260,280,295,0,305,290,285];
+  const maxSpd=350;
+  function getColor(spd){
+    if(spd===0)return'rgba(255,71,87,.35)';
+    const pct=spd/maxSpd;
+    if(pct>.85)return`rgba(0,229,160,.9)`;
+    if(pct>.7)return`rgba(0,229,160,.55)`;
+    if(pct>.5)return`rgba(245,158,11,.6)`;
+    return`rgba(245,158,11,.3)`;
+  }
+  const times=['05:30','07:00','08:30','10:00','11:30','13:00','13:30'];
+  return(
+    <div>
+      <SL accent={C.amber}>Snelheid heatmap — per 15 min</SL>
+      <div style={{display:'grid',gridTemplateColumns:`repeat(${data.length},1fr)`,gap:2,marginBottom:6}}>
+        {data.map((spd,i)=>(
+          <div key={i} title={spd?`${spd} m/min`:'Stilstand'} style={{height:28,borderRadius:3,background:getColor(spd),boxShadow:spd>280?`0 0 6px ${C.g}66`:undefined,transition:'all .3s'}}/>
+        ))}
+      </div>
+      <div style={{display:'flex',justifyContent:'space-between'}}>
+        {times.map(t=><span key={t} className="mono" style={{fontSize:9,color:C.muted}}>{t}</span>)}
+      </div>
+      <div style={{display:'flex',gap:12,marginTop:10}}>
+        {[['> 85% max',C.g,'rgba(0,229,160,.9)'],['70–85%','rgba(0,229,160,.55)','rgba(0,229,160,.55)'],['50–70%',C.amber,'rgba(245,158,11,.6)'],['Stilstand',C.red,'rgba(255,71,87,.35)']].map(([l,c,bg])=>(
+          <div key={l} style={{display:'flex',alignItems:'center',gap:4}}>
+            <div style={{width:12,height:8,borderRadius:2,background:bg}}/>
+            <span style={{fontSize:10,color:C.muted}}>{l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── REJECT WATERFALL ──────────────────────────────────────────
+function RejectWaterfall(){
+  const steps=[
+    {label:'Totale shift',value:510,color:C.muted,isTotal:true},
+    {label:'Lopend',value:416,color:C.g,isPos:true},
+    {label:'Gepland stop',value:20,color:C.dim,isNeg:true},
+    {label:'Machine down',value:41,color:C.red,isNeg:true},
+    {label:'Formaat',value:27,color:C.blue,isNeg:true},
+    {label:'Sluis open',value:38,color:C.amber,isNeg:true},
+  ];
+  const max=510;
+  return(
+    <div>
+      <SL accent={C.red}>Reject &amp; downtime waterval — minuten</SL>
+      <div style={{display:'flex',alignItems:'flex-end',gap:8,height:130,marginBottom:8}}>
+        {steps.map((s,i)=>{
+          const h=s.value/max*110;
+          return(
+            <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+              <div className="mono" style={{fontSize:10,color:s.color,fontWeight:700}}>{s.value}</div>
+              <div style={{width:'100%',height:h,background:s.isTotal?'rgba(255,255,255,.08)':`linear-gradient(to top,${s.color}99,${s.color}dd)`,borderRadius:'4px 4px 0 0',boxShadow:s.isTotal?'none':`0 0 12px ${s.color}44`,position:'relative'}}>
+                {!s.isTotal&&(
+                  <div style={{position:'absolute',top:-6,left:'50%',transform:'translateX(-50%)',width:2,height:6,background:s.color,opacity:.5}}/>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{display:'flex',gap:8}}>
+        {steps.map(s=>(
+          <div key={s.label} style={{flex:1,fontSize:9,color:C.muted,textAlign:'center',lineHeight:1.3}}>{s.label}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── ORDER SPEED CHART ─────────────────────────────────────────
+function OrderSpeedChart(){
+  const orders=[
+    {order:'305612',prod:'PRO225R',gsm:225,w:900,actual:290,max:350,mt:1.77,tonH:6.7},
+    {order:'305516',prod:'PRI270R',gsm:270,w:900,actual:295,max:350,mt:1.23,tonH:7.1},
+    {order:'305454',prod:'PRI305R',gsm:305,w:749,actual:225,max:335,mt:0.24,tonH:5.3},
+    {order:'305449',prod:'PRI280R',gsm:280,w:730,actual:190,max:329,mt:0.82,tonH:2.7},
+    {order:'305500',prod:'PRI170R',gsm:170,w:995,actual:195,max:350,mt:0.54,tonH:3.1},
+    {order:'305544',prod:'PRI255R',gsm:255,w:1000,actual:265,max:350,mt:0.53,tonH:4.1},
+  ];
+  return(
+    <div>
+      <SL accent={C.blue}>Snelheidsbenutting per order</SL>
+      {orders.map((o,i)=>{
+        const util=o.actual/o.max*100;
+        const barColor=util>85?C.g:util>70?C.amber:C.red;
+        return(
+          <div key={i} style={{marginBottom:10,padding:'10px 12px',background:'rgba(255,255,255,.02)',borderRadius:8,border:`1px solid ${C.border}`}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                <span className="mono" style={{fontSize:11,color:C.blue}}>{o.order}</span>
+                <span style={{fontSize:11,color:C.muted}}>{o.gsm}g · {o.w}mm</span>
+              </div>
+              <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                <span className="mono" style={{fontSize:11,color:barColor}}>{Math.round(util)}%</span>
+                <span style={{fontSize:11,color:C.muted}}>{o.tonH} ton/h</span>
+              </div>
+            </div>
+            <div style={{position:'relative',height:6,background:'rgba(255,255,255,.06)',borderRadius:3,overflow:'visible'}}>
+              {/* Max speed marker */}
+              <div style={{position:'absolute',right:0,top:-4,bottom:-4,width:2,background:'rgba(255,255,255,.2)',borderRadius:1}}/>
+              {/* Actual */}
+              <div style={{height:'100%',width:`${util}%`,background:`linear-gradient(90deg,${barColor}88,${barColor})`,borderRadius:3,boxShadow:`0 0 8px ${barColor}55`}}/>
+              {/* Dot */}
+              <div style={{position:'absolute',left:`${util}%`,top:'50%',transform:'translate(-50%,-50%)',width:10,height:10,borderRadius:'50%',background:barColor,boxShadow:`0 0 8px ${barColor}`,border:`2px solid ${C.bg}`}}/>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}>
+              <span style={{fontSize:9,color:C.muted}}>0 m/min</span>
+              <span className="mono" style={{fontSize:9,color:C.muted}}>{o.actual} / {o.max} m/min</span>
+              <span style={{fontSize:9,color:C.muted}}>max</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── IMPACT MATRIX ─────────────────────────────────────────────
+function ImpactMatrix(){
+  const items=[
+    {label:'Reject registratie',impact:85,effort:20,color:C.g,win:'8 min/shift'},
+    {label:'Formaat procedure',impact:70,effort:45,color:C.amber,win:'9 min/shift'},
+    {label:'Speed per formaat',impact:90,effort:60,color:C.blue,win:'+12% output'},
+    {label:'Alarm 1042 root cause',impact:60,effort:70,color:C.red,win:'18 min/shift'},
+    {label:'Opstart procedure',impact:50,effort:40,color:C.purple,win:'6 min/shift'},
+  ];
+  return(
+    <div>
+      <SL accent={C.g}>Impact vs. inspanning matrix</SL>
+      <div style={{position:'relative',height:220,background:'rgba(255,255,255,.02)',borderRadius:12,border:`1px solid ${C.border}`,overflow:'hidden',marginBottom:8}}>
+        {/* Grid lines */}
+        <div style={{position:'absolute',left:'50%',top:0,bottom:0,width:1,background:'rgba(255,255,255,.06)'}}/>
+        <div style={{position:'absolute',top:'50%',left:0,right:0,height:1,background:'rgba(255,255,255,.06)'}}/>
+        {/* Quadrant labels */}
+        <div style={{position:'absolute',top:8,left:8,fontSize:9,color:'rgba(255,255,255,.2)',fontWeight:700}}>LAAG IMPACT</div>
+        <div style={{position:'absolute',top:8,right:8,fontSize:9,color:'rgba(255,255,255,.2)',fontWeight:700,textAlign:'right'}}>HOOG IMPACT</div>
+        <div style={{position:'absolute',bottom:8,left:8,fontSize:9,color:'rgba(255,255,255,.2)',fontWeight:700}}>MAKKELIJK</div>
+        <div style={{position:'absolute',bottom:8,right:8,fontSize:9,color:'rgba(255,255,255,.2)',fontWeight:700,textAlign:'right'}}>MOEILIJK</div>
+        {/* Priority zone */}
+        <div style={{position:'absolute',right:0,top:0,width:'50%',height:'50%',background:`${C.g}05`,border:`1px solid ${C.g}15`,borderRadius:'0 12px 0 0'}}/>
+        {/* Dots */}
+        {items.map((item,i)=>(
+          <div key={i} title={`${item.label}: ${item.win}`} style={{
+            position:'absolute',
+            left:`${item.effort}%`,
+            top:`${100-item.impact}%`,
+            transform:'translate(-50%,-50%)',
+            width:32,height:32,borderRadius:'50%',
+            background:`${item.color}25`,
+            border:`2px solid ${item.color}`,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:9,fontWeight:700,color:item.color,
+            boxShadow:`0 0 12px ${item.color}55`,
+            cursor:'default',
+            zIndex:2,
+          }}>
+            {i+1}
+          </div>
+        ))}
+        {/* Axes labels */}
+        <div style={{position:'absolute',bottom:0,left:'50%',transform:'translateX(-50%)',fontSize:9,color:C.muted,padding:'0 0 4px'}}>← Makkelijk · Moeilijk →</div>
+      </div>
+      {/* Legend */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+        {items.map((item,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'rgba(255,255,255,.02)',borderRadius:6}}>
+            <div style={{width:18,height:18,borderRadius:'50%',background:`${item.color}25`,border:`2px solid ${item.color}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:item.color,flexShrink:0}}>{i+1}</div>
+            <div>
+              <div style={{fontSize:11,fontWeight:600}}>{item.label}</div>
+              <div style={{fontSize:10,color:item.color}}>{item.win}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── DONUT CHART ───────────────────────────────────────────────
+function DonutChart({data,size=130}){
+  const total=data.reduce((s,d)=>s+d.value,0);
+  let offset=0;
+  const r=44,circ=2*Math.PI*r,cx=size/2,cy=size/2;
+  const slices=data.map(d=>{
+    const pct=d.value/total;
+    const dash=circ*pct;
+    const gap=circ*(1-pct);
+    const rot=offset*360-90;
+    offset+=pct;
+    return{...d,dash,gap,rot};
+  });
+  return(
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {slices.map((s,i)=>(
+        <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={s.color} strokeWidth={10}
+          strokeDasharray={`${s.dash} ${s.gap}`}
+          transform={`rotate(${s.rot} ${cx} ${cy})`}
+          strokeLinecap="round"
+          style={{filter:`drop-shadow(0 0 6px ${s.color}88)`}}
+        />
+      ))}
+      <circle cx={cx} cy={cy} r={r-16} fill={C.dim} opacity={.3}/>
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SCREENS
+// ─────────────────────────────────────────────────────────────
+
+function LoginScreen({setScreen}){
+  const [tab,setTab]=useState('login');
+  const inp={width:'100%',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.08)',color:C.text,borderRadius:10,padding:'11px 14px',fontFamily:'Space Grotesk',fontSize:14,outline:'none',transition:'border-color .2s'};
+  const field={marginBottom:14};
+  const lbl={display:'block',fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em',color:C.muted,marginBottom:7};
+  return(
+    <div style={{minHeight:'100vh',display:'grid',placeItems:'center',background:C.bg,padding:24,position:'relative'}}>
+      <MeshBg op={.14}/>
+      <div style={{position:'fixed',inset:0,backgroundImage:`linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px)`,backgroundSize:'44px 44px',pointerEvents:'none'}}/>
+      <div style={{width:'100%',maxWidth:420,position:'relative',zIndex:2}}>
+        <div style={{textAlign:'center',marginBottom:36}}>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
+            <div style={{width:56,height:56,borderRadius:16,background:`linear-gradient(135deg,${C.g},${C.blue})`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 0 30px ${C.g}55,0 10px 30px rgba(0,0,0,.5)`}}>
+              <svg width={26} height={26} viewBox="0 0 16 16" fill="none"><polyline points="1,12 5,7 8,10 11,4 15,7" stroke="#020c07" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+          </div>
+          <div className="syne" style={{fontSize:28,letterSpacing:'-.04em',marginBottom:6}}>JM<span style={{color:C.g}}>Analyze</span>Tool</div>
+          <div style={{color:C.muted,fontSize:13}}>Productie-analyse · Beveiligde accounts</div>
+        </div>
+        <div className="glass" style={{padding:30}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',background:'rgba(255,255,255,.04)',borderRadius:11,padding:3,marginBottom:24}}>
+            {[['login','Inloggen'],['register','Account maken']].map(([t,l])=>(
+              <button key={t} onClick={()=>setTab(t)} style={{border:'none',borderRadius:9,padding:'9px 0',cursor:'pointer',fontFamily:'Space Grotesk',fontSize:13,fontWeight:700,background:tab===t?`linear-gradient(135deg,${C.g},${C.g2})`:'transparent',color:tab===t?'#020c07':C.muted,transition:'all .2s',boxShadow:tab===t?`0 2px 12px ${C.g}44`:'none'}}>{l}</button>
+            ))}
+          </div>
+          {tab==='login'?(
+            <>
+              <div style={field}><label style={lbl}>E-mail</label><input style={inp} type="email" placeholder="naam@bedrijf.nl"/></div>
+              <div style={field}><label style={lbl}>Wachtwoord</label><input style={inp} type="password" placeholder="••••••••"/></div>
+              <div style={{height:18}}/>
+              <button className="btn-glow" onClick={()=>setScreen('builder')} style={{width:'100%',padding:'13px 0',fontSize:15}}>Inloggen →</button>
+            </>
+          ):(
+            <>
+              {[['Naam','text','Jan Modaal'],['E-mail','email','naam@bedrijf.nl'],['Vestiging / team','text','Bijv. Winschoten'],['Wachtwoord','password','••••••••'],['Unieke accountcode','text','••••••']].map(([l,t,p])=>(
+                <div style={field} key={l}><label style={lbl}>{l}</label><input style={inp} type={t} placeholder={p}/></div>
+              ))}
+              <button className="btn-glow" style={{width:'100%',padding:'12px 0',fontSize:14}}>Account aanmaken →</button>
+            </>
+          )}
+        </div>
+        <div style={{textAlign:'center',color:'rgba(255,255,255,.18)',fontSize:12,marginTop:20}}>Accounts vereisen een unieke toegangscode</div>
+      </div>
+    </div>
+  );
+}
+
+function BuilderScreen({setScreen}){
+  const [loaded,setLoaded]=useState({speed:true,events:true,oee:false,sluis:false,orders:true,pasaban:false});
+  const [phase,setPhase]=useState('upload');
+  const [activeTab,setActiveTab]=useState('overview');
+  const [pct,setPct]=useState(0);
+  const numLoaded=Object.values(loaded).filter(Boolean).length;
+  const isReady=loaded.speed&&loaded.events;
+  const route=numLoaded>=4?'Complete':'Basic';
+  const files=[
+    {key:'speed',n:1,label:'Sens snelheden',desc:'Linespeed, maxspeed, rejectgate, format change',ext:'CSV/Excel',req:true},
+    {key:'events',n:2,label:'Event & Alarm',desc:'Events, alarmen, duur, oorzaak, commentaar',ext:'CSV/Excel',req:true},
+    {key:'oee',n:3,label:'OEE report',desc:'OEE, availability, performance, quality',ext:'CSV/Excel',req:false},
+    {key:'sluis',n:4,label:'Sluis report',desc:'Sluis/rejectgate downtime en sluisfactoren',ext:'CSV/Excel',req:false},
+    {key:'orders',n:5,label:'Orders & tonnen',desc:'Orderlijst, meters, MT, ton/u, opstarttijden',ext:'Excel',req:false},
+    {key:'pasaban',n:6,label:'Pasaban log',desc:'Reset/alarms, start/stop, operator, WID/SEG',ext:'TXT/LOG',req:false},
+  ];
+  function startBuild(){setPhase('building');let p=0;const iv=setInterval(()=>{p+=2;setPct(p);if(p>=100){clearInterval(iv);setPhase('dashboard');}},40);}
+  if(phase==='building') return <BuildingScreen pct={pct}/>;
+  if(phase==='dashboard') return <Dashboard setScreen={setScreen} activeTab={activeTab} setActiveTab={setActiveTab} route={route}/>;
+  return(
+    <div style={{minHeight:'100vh',background:C.bg}}>
+      <Nav screen="builder" setScreen={setScreen}/>
+      <MeshBg op={.09}/>
+      <div style={{maxWidth:1100,margin:'0 auto',padding:'32px 24px',position:'relative',zIndex:1}}>
+        <div style={{marginBottom:28}}>
+          <div className="syne" style={{fontSize:26,letterSpacing:'-.04em',marginBottom:4}}>Report Builder</div>
+          <div style={{color:C.muted,fontSize:13}}>Upload je databestanden — Sens + Events zijn verplicht. Meer bronnen = slimmer rapport.</div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
+          <div className="glass" style={{padding:'18px 20px'}}>
+            <SL accent={C.blue}>Analyse context</SL>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              {[['Machine','Sheeter / DW08'],['Dienst','Ochtend 05:30–13:30'],['Start','05:30'],['Einde','13:30']].map(([l,v])=>(
+                <div key={l}><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:C.muted,marginBottom:5}}>{l}</div><div style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:8,padding:'8px 11px',fontSize:13}}>{v}</div></div>
+              ))}
+            </div>
+          </div>
+          <div className="glass" style={{padding:'18px 20px',display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
+            <SL accent={C.g}>Route status</SL>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
+              <Badge color={loaded.speed?C.g:C.amber}>Sens {loaded.speed?'✓':'!'}</Badge>
+              <Badge color={loaded.events?C.g:C.amber}>Events {loaded.events?'✓':'!'}</Badge>
+              <Badge color={route==='Complete'?C.blue:C.muted}>{route} route</Badge>
+              <Badge color={C.muted}>{numLoaded}/6 bestanden</Badge>
+            </div>
+            <button className="btn-glow" onClick={startBuild} disabled={!isReady} style={{padding:'11px 20px',fontSize:13,opacity:isReady?1:.4,cursor:isReady?'pointer':'not-allowed'}}>
+              {isReady?`Build ${route} Report →`:'Wacht op verplichte bestanden…'}
+            </button>
+          </div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+          {files.map(f=>(
+            <div key={f.key} onClick={()=>setLoaded(p=>({...p,[f.key]:!p[f.key]}))} style={{borderRadius:14,padding:'16px 18px',cursor:'pointer',background:loaded[f.key]?'rgba(0,229,160,.06)':C.glass,border:`1px solid ${loaded[f.key]?C.g+'50':f.req?C.amber+'30':'rgba(255,255,255,.06)'}`,backdropFilter:'blur(12px)',transition:'all .2s',boxShadow:loaded[f.key]?`0 0 20px ${C.g}18`:'none',minHeight:120,position:'relative',overflow:'hidden'}}>
+              {loaded[f.key]&&<div style={{position:'absolute',top:0,right:0,width:60,height:60,background:`radial-gradient(circle at 100% 0%,${C.g}20,transparent 70%)`}}/>}
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div style={{width:22,height:22,borderRadius:'50%',flexShrink:0,background:loaded[f.key]?C.g:f.req?`${C.amber}25`:'rgba(255,255,255,.06)',color:loaded[f.key]?C.bg:f.req?C.amber:C.muted,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,boxShadow:loaded[f.key]?`0 0 8px ${C.g}88`:'none'}}>{f.n}</div>
+                  <span style={{fontSize:13,fontWeight:700}}>{f.label}</span>
+                </div>
+                {f.req&&!loaded[f.key]&&<Badge color={C.amber} small>Vereist</Badge>}
+                {loaded[f.key]&&<Badge color={C.g} small>✓</Badge>}
+              </div>
+              <div style={{fontSize:12,color:C.muted,lineHeight:1.5,paddingLeft:30}}>{f.desc}</div>
+              <div className="mono" style={{fontSize:10,color:'rgba(255,255,255,.18)',marginTop:8,paddingLeft:30}}>{f.ext}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{textAlign:'center',color:'rgba(255,255,255,.15)',fontSize:11,marginTop:14}}>Klik op een kaart om bestand te togglen (prototype)</div>
+      </div>
+    </div>
+  );
+}
+
+function BuildingScreen({pct}){
+  const steps=['Sens snelheden verwerken','Event & Alarm inlezen','Orders & tonnen laden','OEE berekenen','AI analyseert alle data','Dashboard opbouwen'];
+  const activeStep=Math.min(Math.floor(pct/17),steps.length-1);
+  return(
+    <div style={{minHeight:'100vh',display:'grid',placeItems:'center',background:C.bg,position:'relative'}}>
+      <MeshBg op={.15}/>
+      <div style={{maxWidth:420,width:'100%',padding:32,position:'relative',zIndex:1,textAlign:'center'}}>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:28}}>
+          <svg width={80} height={80} viewBox="0 0 80 80">
+            <circle cx={40} cy={40} r={34} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth={5}/>
+            <circle cx={40} cy={40} r={34} fill="none" stroke={C.g} strokeWidth={5} strokeDasharray={2*Math.PI*34} strokeDashoffset={2*Math.PI*34*(1-pct/100)} strokeLinecap="round" transform="rotate(-90 40 40)" style={{transition:'stroke-dashoffset .2s',filter:`drop-shadow(0 0 8px ${C.g})`}}/>
+            <text x={40} y={46} textAnchor="middle" fill={C.g} fontFamily="Space Mono" fontSize={14} fontWeight={700}>{pct}%</text>
+          </svg>
+        </div>
+        <div className="syne" style={{fontSize:20,marginBottom:6}}>Rapport wordt opgebouwd</div>
+        <div style={{color:C.muted,fontSize:13,marginBottom:28}}>Even geduld — alle data wordt verwerkt</div>
+        <div className="glass" style={{padding:20,textAlign:'left'}}>
+          {steps.map((s,i)=>(
+            <div key={s} style={{display:'flex',gap:10,alignItems:'center',padding:'7px 0',borderBottom:i<steps.length-1?`1px solid rgba(255,255,255,.05)`:'none'}}>
+              <div style={{width:18,height:18,borderRadius:'50%',flexShrink:0,background:i<activeStep?C.g:i===activeStep?`${C.g}44`:'rgba(255,255,255,.06)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color:i<activeStep?C.bg:C.muted,boxShadow:i<activeStep?`0 0 8px ${C.g}88`:'none'}}>{i<activeStep?'✓':i===activeStep?'⟳':''}</div>
+              <span style={{fontSize:12,color:i<=activeStep?C.text:C.muted}}>{s}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({setScreen,activeTab,setActiveTab,route}){
+  const tabs=[{id:'overview',label:'Overview'},{id:'operator',label:'Operator'},{id:'machine',label:'Machine'},{id:'quality',label:'Quality'},{id:'orders',label:'Orders & tonnen'},{id:'improve',label:'Verbeteringen'}];
+  return(
+    <div style={{minHeight:'100vh',background:C.bg}}>
+      <Nav screen="builder" setScreen={setScreen}/>
+      <MeshBg op={.06} c1={C.g} c2={C.purple}/>
+      <div style={{padding:'12px 28px',borderBottom:`1px solid ${C.border}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(6,7,9,.6)',backdropFilter:'blur(12px)',position:'relative',zIndex:5}}>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:700,letterSpacing:'-.02em'}}>Sheeter — Ochtend 05:30–13:30</div>
+            <div style={{fontSize:12,color:C.muted,marginTop:1}}>Complete rapport · 4 bronnen · 27 apr 2026</div>
+          </div>
+          <Badge color={C.blue}>{route}</Badge>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn-ghost" onClick={()=>setScreen('reports')} style={{padding:'7px 14px',fontSize:12}}>Opslaan</button>
+          <button className="btn-glow" style={{padding:'7px 16px',fontSize:12}}>Exporteer PDF</button>
+        </div>
+      </div>
+      <div style={{display:'flex',borderBottom:`1px solid ${C.border}`,background:'rgba(6,7,9,.5)',backdropFilter:'blur(8px)',paddingLeft:20,position:'sticky',top:54,zIndex:4}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{border:'none',background:'none',cursor:'pointer',padding:'12px 16px',fontFamily:'Space Grotesk',fontSize:13,fontWeight:600,color:activeTab===t.id?C.text:C.muted,borderBottom:`2px solid ${activeTab===t.id?C.g:'transparent'}`,transition:'all .15s',whiteSpace:'nowrap',textShadow:activeTab===t.id?`0 0 12px ${C.g}66`:'none'}}>{t.label}</button>
+        ))}
+      </div>
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'24px',position:'relative',zIndex:1}}>
+        {activeTab==='overview'  && <OverviewPanel/>}
+        {activeTab==='operator'  && <OperatorPanel/>}
+        {activeTab==='machine'   && <MachinePanel/>}
+        {activeTab==='quality'   && <QualityPanel/>}
+        {activeTab==='orders'    && <OrdersPanel/>}
+        {activeTab==='improve'   && <ImprovePanel/>}
+      </div>
+    </div>
+  );
+}
+
+// ── PANELS ────────────────────────────────────────────────────
+
+function OverviewPanel(){
+  return(
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:18}}>
+        <RadialKpi label="Performance" value={78} pct={78} color={C.amber} unit="%"/>
+        <RadialKpi label="Beschikbaarheid" value={85} pct={85} color={C.g} unit="%"/>
+        <RadialKpi label="Reject open" value="38" sub="6.2% van shift" color={C.red} unit="min"/>
+        <RadialKpi label="Avg linespeed" value="274" sub="max 350 m/min" color={C.blue} unit="m/m"/>
+        <RadialKpi label="Downtime" value="94" sub="15.4% van shift" color={C.amber} unit="min"/>
+      </div>
+      <div className="glass" style={{padding:'20px 22px',marginBottom:16}}>
+        <SL accent={C.g}>Shift timeline — 05:30 tot 13:30</SL>
+        <Timeline3D/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        <div className="glass" style={{padding:'18px 20px'}}>
+          <SL accent={C.blue}>Data bronnen</SL>
+          {[['Sens snelheden','3,240 rijen',C.g],['Event & Alarm','47 events',C.g],['Orders & tonnen','8 orders · 3.47 MT',C.g],['OEE report','Niet geladen',C.muted],['Sluis report','Niet geladen',C.muted],['Pasaban log','Niet geladen',C.muted]].map(([n,v,c])=>(
+            <div key={n} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:`1px solid ${C.border}`}}>
+              <span style={{fontSize:12}}>{n}</span>
+              <span style={{fontSize:11,color:c,fontWeight:600}}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <div className="glass" style={{padding:'18px 20px'}}>
+          <SL accent={C.red}>Reject oorzaak analyse</SL>
+          <HBar label="Bekende oorzaak" value={23.6} max={38} color={C.g} sub="Event & Alarm gematcht" unit=" min"/>
+          <HBar label="Onbekende oorzaak" value={14.4} max={38} color={C.red} sub="Geen registratie gevonden" unit=" min"/>
+          <div style={{background:`${C.red}0f`,border:`1px solid ${C.red}25`,borderRadius:10,padding:'12px 14px',marginTop:8}}>
+            <div style={{fontSize:12,color:C.red,fontWeight:700,marginBottom:4}}>⚠ Registratiegap</div>
+            <div style={{fontSize:11,color:C.muted,lineHeight:1.6}}>14.4 min reject-tijd heeft geen bekende oorzaak. Elke reject-opening heeft een reden nodig.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OperatorPanel(){
+  const formats=[{label:'900→1020mm',dur:8.2},{label:'1020→750mm',dur:11.4},{label:'750→900mm',dur:7.1}];
+  const maxDur=12;
+  return(
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:18}}>
+        <RadialKpi label="Performance" value={78} pct={78} color={C.amber} unit="%"/>
+        <RadialKpi label="Formaatwisselingen" value="3×" sub="gem. 8.9 min" color={C.blue} unit=""/>
+        <RadialKpi label="Speed aanpassingen" value="1×" sub="door operator" color={C.purple} unit=""/>
+        <RadialKpi label="Reel splices" value="4×" color={C.g} unit=""/>
+        <RadialKpi label="Pallet changes" value="6×" color={C.g} unit=""/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+        {/* 3D Bar chart — formaatwisselingen */}
+        <div className="glass" style={{padding:'18px 20px'}}>
+          <SL accent={C.blue}>Formaatwisseling duur — 3D weergave</SL>
+          <div style={{display:'flex',gap:16,alignItems:'flex-end',height:180,padding:'0 12px'}}>
+            {formats.map((f,i)=><Bar3D key={i} label={f.label} value={f.dur} max={maxDur} color={f.dur>10?C.red:f.dur>8?C.amber:C.g} unit=" min" idx={i}/>)}
+            <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+              <div className="mono" style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.2)'}}>norm</div>
+              <div style={{position:'relative',width:28,height:140,display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+                <div style={{position:'relative',width:28,height:`${5/maxDur*100}%`,minHeight:4}}>
+                  <div style={{position:'absolute',inset:0,background:'rgba(255,255,255,.1)',borderRadius:'4px 4px 0 0',border:'1px dashed rgba(255,255,255,.2)'}}/>
+                </div>
+              </div>
+              <div style={{fontSize:10,color:C.muted,textAlign:'center'}}>5 min</div>
+            </div>
+          </div>
+          <div style={{marginTop:8,padding:'8px 12px',background:`${C.amber}0a`,border:`1px solid ${C.amber}25`,borderRadius:8}}>
+            <div style={{fontSize:11,color:C.amber}}>Gem. 8.9 min vs. norm 5 min → <strong>+11.7 min verlies</strong> per shift</div>
+          </div>
+        </div>
+
+        {/* Events table */}
+        <div className="glass" style={{padding:'18px 20px'}}>
+          <SL accent={C.amber}>Operator events</SL>
+          {[['07:14','8.2','Format change — 900→1020mm'],['08:33','2.1','Pallet change — station 2'],['09:17','11.4','Format change — 1020→750mm'],['10:05','1.8','Reel splice'],['11:22','6.7','Speed reduced — materiaalschade'],['12:01','0.9','Reset signal']].map(([t,d,desc],i)=>(
+            <div key={i} style={{display:'flex',gap:10,padding:'8px 0',borderBottom:`1px solid ${C.border}`,alignItems:'flex-start'}}>
+              <span className="mono" style={{fontSize:11,color:C.g,flexShrink:0,textShadow:`0 0 8px ${C.g}66`}}>{t}</span>
+              <span className="mono" style={{fontSize:11,color:C.amber,flexShrink:0,minWidth:36}}>{d}m</span>
+              <span style={{fontSize:11,color:C.muted}}>{desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Speed heatmap */}
+      <div className="glass" style={{padding:'18px 20px'}}>
+        <SpeedHeatmap/>
+      </div>
+    </div>
+  );
+}
+
+function MachinePanel(){
+  const alarms=[{label:'Nip pressure (1042)',count:8,color:C.red},{label:'Belt tension (0871)',count:5,color:C.amber},{label:'Dust collector (2203)',count:4,color:C.amber},{label:'Hydraulic pressure (0134)',count:3,color:C.muted},{label:'Photocell misread (1188)',count:2,color:C.muted}];
+  const maxCount=8;
+  const donutData=[{label:'Machine',value:41,color:C.red},{label:'Operator',value:27,color:C.amber},{label:'Kwaliteit',value:26,color:C.blue}];
+  return(
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:18}}>
+        <RadialKpi label="Machine events" value="31×" color={C.red} unit=""/>
+        <RadialKpi label="Machine stops" value="7×" color={C.red} unit=""/>
+        <RadialKpi label="Alarm activaties" value="22×" color={C.amber} unit=""/>
+        <RadialKpi label="Reset signalen" value="14×" color={C.purple} unit=""/>
+        <RadialKpi label="Beschikbaarheid" value={85} pct={85} color={C.g} unit="%"/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1.6fr 1fr',gap:14,marginBottom:14}}>
+        {/* 3D horizontal alarm bars */}
+        <div className="glass" style={{padding:'18px 20px'}}>
+          <SL accent={C.red}>Top Pasaban alarmen</SL>
+          {alarms.map((a,i)=>(
+            <div key={i} style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+                <span style={{fontSize:12}}>{a.label}</span>
+                <span className="mono" style={{fontSize:12,color:a.color,fontWeight:700,textShadow:`0 0 8px ${a.color}88`}}>{a.count}×</span>
+              </div>
+              <div style={{position:'relative',height:10,background:'rgba(255,255,255,.05)',borderRadius:5}}>
+                <div style={{height:'100%',width:`${a.count/maxCount*100}%`,background:`linear-gradient(90deg,${a.color}88,${a.color})`,borderRadius:5,boxShadow:`0 0 10px ${a.color}55`,position:'relative'}}>
+                  {/* 3D top edge */}
+                  <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`${a.color}66`,borderRadius:2}}/>
+                  {/* End cap dot */}
+                  <div style={{position:'absolute',right:-5,top:'50%',transform:'translateY(-50%)',width:12,height:12,borderRadius:'50%',background:a.color,boxShadow:`0 0 10px ${a.color}`,border:`2px solid ${C.bg}`}}/>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Downtime donut */}
+        <div className="glass" style={{padding:'18px 20px',display:'flex',flexDirection:'column',alignItems:'center'}}>
+          <SL accent={C.amber}>Downtime verdeling</SL>
+          <DonutChart data={donutData} size={140}/>
+          <div style={{marginTop:12,width:'100%'}}>
+            {donutData.map(d=>(
+              <div key={d.label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:`1px solid ${C.border}`}}>
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <div style={{width:8,height:8,borderRadius:'50%',background:d.color,boxShadow:`0 0 6px ${d.color}`}}/>
+                  <span style={{fontSize:12}}>{d.label}</span>
+                </div>
+                <span className="mono" style={{fontSize:12,color:d.color,fontWeight:700}}>{d.value} min</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Events */}
+      <div className="glass" style={{padding:'18px 20px'}}>
+        <SL accent={C.red}>Machine stop events</SL>
+        {[['07:42','18.3','Nip roll pressure failure — station 3'],['09:31','12.1','Belt tensioner fault — lower deck'],['11:08','6.4','Hydraulic pressure drop'],['12:44','4.2','Dust collector blockage']].map(([t,d,desc],i)=>(
+          <div key={i} style={{display:'flex',gap:12,padding:'9px 0',borderBottom:`1px solid ${C.border}`,alignItems:'flex-start'}}>
+            <span className="mono" style={{fontSize:12,color:C.g,flexShrink:0}}>{t}</span>
+            <span className="mono" style={{fontSize:12,color:C.red,flexShrink:0,minWidth:44}}>{d}m</span>
+            <span style={{fontSize:12,color:C.muted}}>{desc}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QualityPanel(){
+  return(
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:18}}>
+        <RadialKpi label="Reject open" value="38" color={C.red} unit="min"/>
+        <RadialKpi label="Bekende oorzaak" value="23.6" color={C.g} unit="min"/>
+        <RadialKpi label="Onbekende reject" value="14.4" color={C.red} unit="min"/>
+        <RadialKpi label="Quality events" value="9×" color={C.amber} unit=""/>
+        <RadialKpi label="Sluis data" value="—" color={C.muted} unit=""/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+        <div className="glass" style={{padding:'18px 20px'}}>
+          <RejectWaterfall/>
+        </div>
+        <div className="glass" style={{padding:'18px 20px'}}>
+          <SL accent={C.amber}>Reject oorzaak breakdown</SL>
+          <HBar label="RTS / korte vellen" value={9.2} max={38} color={C.red} sub="2 events" unit=" min"/>
+          <HBar label="Splice waste" value={8.2} max={38} color={C.amber} sub="1 event" unit=" min"/>
+          <HBar label="Edge damage / hoekje" value={2.8} max={38} color={C.amber} sub="1 event" unit=" min"/>
+          <HBar label="Onbekend / geen registratie" value={14.4} max={38} color={C.muted} sub="Gap — registreer altijd!" unit=" min"/>
+          <div style={{marginTop:14,padding:'10px 12px',background:`${C.red}0a`,border:`1px solid ${C.red}20`,borderRadius:8}}>
+            <div style={{fontSize:11,color:C.red,fontWeight:700,marginBottom:3}}>Prioriteit: Onbekende reject</div>
+            <div style={{fontSize:11,color:C.muted}}>37.9% van reject-tijd is onverklaard. Doel: &lt; 10%.</div>
+          </div>
+        </div>
+      </div>
+      <div className="glass" style={{padding:'18px 20px'}}>
+        <SL accent={C.red}>Quality / reject events</SL>
+        {[['07:52','4.1','RTS — damage at output table'],['09:44','8.2','Rejectgate open — splice waste'],['10:18','2.8','Hoekje — edge damage B-roll'],['11:33','6.4','Rejectgate open — unknown cause'],['12:20','2.1','RTS — short sheet detection']].map(([t,d,desc],i)=>(
+          <div key={i} style={{display:'flex',gap:12,padding:'9px 0',borderBottom:`1px solid ${C.border}`,alignItems:'flex-start'}}>
+            <span className="mono" style={{fontSize:12,color:C.g,flexShrink:0}}>{t}</span>
+            <span className="mono" style={{fontSize:12,color:C.red,flexShrink:0,minWidth:44}}>{d}m</span>
+            <span style={{fontSize:12,color:C.muted}}>{desc}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OrdersPanel(){
+  const timeline=[
+    {order:'305454',start:.0,end:.15,color:C.purple},
+    {order:'305371',start:.15,end:.37,color:C.blue},
+    {order:'305612',start:.37,end:.52,color:C.g},
+    {order:'305516',start:.52,end:.67,color:C.amber},
+    {order:'305449',start:.67,end:.80,color:C.red},
+    {order:'305500',start:.80,end:1,color:C.purple},
+  ];
+  return(
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:18}}>
+        <RadialKpi label="Totaal orders" value="8" sub="gedraaid" color={C.blue} unit=""/>
+        <RadialKpi label="Totaal meters" value="24.6K" color={C.g} unit="m"/>
+        <RadialKpi label="Totaal MT" value="3.47" color={C.g} unit=" MT"/>
+        <RadialKpi label="Gem. ton/h" value="4.8" color={C.amber} unit=""/>
+        <RadialKpi label="Gem. speed benut" value={74} pct={74} color={C.blue} unit="%"/>
+      </div>
+
+      {/* Order timeline */}
+      <div className="glass" style={{padding:'18px 20px',marginBottom:14}}>
+        <SL accent={C.blue}>Order timeline — shift 05:30–13:30</SL>
+        <div style={{perspective:600,perspectiveOrigin:'50% 30%',marginBottom:12}}>
+          <div style={{transform:'rotateX(32deg)',transformOrigin:'center bottom',position:'relative',borderRadius:8,overflow:'hidden',height:44,boxShadow:'0 16px 32px rgba(0,0,0,.5)'}}>
+            <div style={{position:'absolute',inset:0,background:'#0a0c12'}}/>
+            {timeline.map((t,i)=>(
+              <div key={i} style={{position:'absolute',top:0,bottom:0,left:`${t.start*100}%`,width:`${(t.end-t.start)*100}%`,background:`${t.color}44`,borderRight:`1px solid ${t.color}88`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <span className="mono" style={{fontSize:9,color:t.color,fontWeight:700}}>{t.order}</span>
+              </div>
+            ))}
+            <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${C.g}44,${C.blue}44,${C.g}44)`}}/>
+          </div>
+          <div style={{height:12,background:`linear-gradient(to bottom,rgba(96,165,250,.04),transparent)`,transform:'rotateX(32deg) translateY(1px)',transformOrigin:'top center',marginTop:-1}}/>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
+          {['05:30','07:30','09:30','11:30','13:30'].map(t=><span key={t} className="mono" style={{fontSize:10,color:C.muted}}>{t}</span>)}
+        </div>
+      </div>
+
+      {/* Speed utilization */}
+      <div className="glass" style={{padding:'18px 20px'}}>
+        <OrderSpeedChart/>
+      </div>
+    </div>
+  );
+}
+
+function ImprovePanel(){
+  const items=[
+    {type:'high',title:'Speed onder machine max',body:'Gemiddelde performance is 78.4%. Vergelijk elk formaat met max snelheid en markeer of de limiet materiaal-, machine- of operatorkeuze is.',win:'+12% output / shift'},
+    {type:'high',title:'Reject registratie incomplete',body:'14.4 min reject-tijd heeft geen bekende oorzaak. Elke reject-opening heeft een reden nodig voor een volledig beeld.',win:'~8 min beter inzicht/shift'},
+    {type:'med',title:'Formaatwisseling gem. 8.9 min',body:'3 wisselingen × 8.9 min = 26.7 min. Best-practice is 4–6 min per wisseling. Standaardiseer de bijbaan-procedure.',win:'~9 min winst/shift'},
+    {type:'ok',title:'Order 305612 — sterk prestatie',body:'6.7 ton/h op 900mm is bovengemiddeld. Analyseer welke omstandigheden dit mogelijk maakten en reproducteer ze.',win:'Referentie order'},
+    {type:'med',title:'Alarm 1042 — root cause',body:'Nip pressure alarm 8× in één shift. Controleer nip-instellingen per formaat en check hydraulisch systeem op lekkage.',win:'~18 min potentieel'},
+  ];
+  const cc={high:C.red,med:C.amber,ok:C.g};
+  const ic={high:'↑','med':'!','ok':'✓'};
+  return(
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+        <div>
+          <div style={{marginBottom:14}}>
+            <div className="syne" style={{fontSize:20,letterSpacing:'-.03em',marginBottom:4}}>Priority actions</div>
+            <div style={{color:C.muted,fontSize:13}}>Op basis van Sens + Event & Alarm analyse.</div>
+          </div>
+          {items.map((item,i)=>(
+            <div key={i} style={{display:'flex',gap:14,padding:'14px 16px',marginBottom:10,background:`${cc[item.type]}08`,border:`1px solid ${cc[item.type]}25`,borderLeft:`3px solid ${cc[item.type]}`,borderRadius:'0 12px 12px 0',backdropFilter:'blur(10px)'}}>
+              <div style={{width:30,height:30,borderRadius:'50%',flexShrink:0,background:`${cc[item.type]}20`,border:`1px solid ${cc[item.type]}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,color:cc[item.type]}}>{ic[item.type]}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>{item.title}</div>
+                <div style={{fontSize:11,color:C.muted,lineHeight:1.65}}>{item.body}</div>
+                <div style={{fontSize:11,color:cc[item.type],fontWeight:700,marginTop:7,textShadow:`0 0 8px ${cc[item.type]}66`}}>{item.win}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Impact matrix */}
+        <div className="glass" style={{padding:'18px 20px'}}>
+          <ImpactMatrix/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── REPORTS ───────────────────────────────────────────────────
+function ReportsScreen({setScreen}){
+  const [sel,setSel]=useState(0);
+  const reps=[
+    {title:'Sheeter ochtend — hoge downtime analyse',machine:'Sheeter',shift:'05:30–13:30',route:'Complete',date:'27 apr 2026',expires:'27 mei'},
+    {title:'DW08 nacht — alarm 1042 spike',machine:'DW08',shift:'21:30–05:30',route:'Basic+',date:'26 apr 2026',expires:'26 mei'},
+    {title:'Sheeter middag — goede shift',machine:'Sheeter',shift:'13:30–21:30',route:'Basic',date:'25 apr 2026',expires:'25 mei'},
+    {title:'DW08 ochtend — formaatwisseling analyse',machine:'DW08',shift:'05:30–13:30',route:'Complete',date:'24 apr 2026',expires:'24 mei'},
+  ];
+  return(
+    <div style={{minHeight:'100vh',background:C.bg}}>
+      <Nav screen="reports" setScreen={setScreen}/>
+      <MeshBg op={.07} c1={C.blue} c2={C.purple}/>
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'28px 24px',position:'relative',zIndex:1}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:22}}>
+          <div>
+            <div className="syne" style={{fontSize:24,letterSpacing:'-.04em',marginBottom:3}}>Mijn rapporten</div>
+            <div style={{color:C.muted,fontSize:13}}>Bewaartermijn: 30 dagen · {reps.length} rapporten</div>
+          </div>
+          <button className="btn-glow" onClick={()=>setScreen('builder')} style={{padding:'10px 18px',fontSize:13}}>+ Nieuw rapport</button>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'320px 1fr',gap:14}}>
+          <div>
+            {reps.map((r,i)=>(
+              <div key={i} onClick={()=>setSel(i)} style={{background:sel===i?`${C.g}08`:C.glass,border:`1px solid ${sel===i?C.g+'50':C.border}`,borderRadius:12,padding:'14px 16px',marginBottom:10,cursor:'pointer',backdropFilter:'blur(12px)',transition:'all .2s',boxShadow:sel===i?`0 0 16px ${C.g}18`:'none'}}>
+                <div style={{fontSize:13,fontWeight:700,marginBottom:6,lineHeight:1.4}}>{r.title}</div>
+                <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginBottom:5}}>
+                  <span style={{fontSize:11,color:C.muted}}>{r.machine}</span><span style={{color:C.dim}}>·</span>
+                  <span style={{fontSize:11,color:C.muted}}>{r.shift}</span>
+                  <Badge color={r.route==='Complete'?C.blue:C.muted} small>{r.route}</Badge>
+                </div>
+                <div style={{fontSize:11,color:C.muted}}>{r.date} · verloopt {r.expires}</div>
+              </div>
+            ))}
+          </div>
+          <div className="glass" style={{padding:'20px 22px',minHeight:400}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:18}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:700,letterSpacing:'-.02em',marginBottom:4}}>{reps[sel].title}</div>
+                <div style={{fontSize:12,color:C.muted}}>jm@metsa.nl · {reps[sel].date}</div>
+              </div>
+              <button style={{background:`${C.red}14`,color:C.red,border:`1px solid ${C.red}35`,borderRadius:8,padding:'7px 13px',cursor:'pointer',fontFamily:'Space Grotesk',fontSize:12,fontWeight:700}}>Verwijderen</button>
+            </div>
+            <div style={{background:'rgba(255,255,255,.02)',borderRadius:10,height:320,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:10}}>
+              <div style={{fontSize:36,opacity:.3}}>📊</div>
+              <div style={{color:C.muted,fontSize:13}}>Rapport preview laadt hier</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ADMIN ─────────────────────────────────────────────────────
+function AdminScreen({setScreen}){
+  const [tab,setTab]=useState('reports');
+  const stats=[{k:'Gebruikers',v:'4',c:C.blue},{k:'Rapporten',v:'12',c:C.g},{k:'AI calls',v:'38',c:C.purple},{k:'Bewaartermijn',v:'30d',c:C.amber}];
+  const users=[{name:'Jan Modaal',email:'jm@metsa.nl',loc:'Winschoten',role:'admin',active:true,date:'1 jan 2026'},{name:'Piet Pietersen',email:'pp@metsa.nl',loc:'Winschoten',role:'user',active:true,date:'15 mrt 2026'},{name:'Kees de Vries',email:'kv@metsa.nl',loc:'Excellent team',role:'user',active:false,date:'10 apr 2026'}];
+  const audit=[{time:'27 apr 14:22',action:'ai_report_generated',user:'jm@metsa.nl',detail:'{promptChars: 4821}'},{time:'27 apr 14:20',action:'report_saved',user:'jm@metsa.nl',detail:'{title: "Sheeter…"}'},{time:'27 apr 08:11',action:'login',user:'jm@metsa.nl',detail:'{}'},{time:'26 apr 22:44',action:'ai_report_generated',user:'pp@metsa.nl',detail:'{promptChars: 3220}'}];
+  return(
+    <div style={{minHeight:'100vh',background:C.bg}}>
+      <Nav screen="admin" setScreen={setScreen}/>
+      <MeshBg op={.07} c1={C.purple} c2={C.blue}/>
+      <div style={{maxWidth:1300,margin:'0 auto',padding:'28px 24px',position:'relative',zIndex:1}}>
+        <div style={{marginBottom:22}}>
+          <div className="syne" style={{fontSize:24,letterSpacing:'-.04em',marginBottom:3}}>Beheer</div>
+          <div style={{color:C.muted,fontSize:13}}>Accounts, rapporten en gebruikskosten bewaken</div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
+          {stats.map(s=>(
+            <div key={s.k} className="glass" style={{padding:'16px 18px',position:'relative',overflow:'hidden'}}>
+              <div style={{position:'absolute',top:0,right:0,width:50,height:50,background:`radial-gradient(circle at 100% 0%,${s.c}18,transparent 70%)`}}/>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:C.muted,marginBottom:10}}>{s.k}</div>
+              <div className="mono" style={{fontSize:32,fontWeight:700,color:s.c,textShadow:`0 0 16px ${s.c}66`}}>{s.v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:6,marginBottom:14}}>
+          {[['reports','Rapporten'],['users','Gebruikers'],['audit','Audit log']].map(([t,l])=>(
+            <button key={t} onClick={()=>setTab(t)} style={{border:`1px solid ${tab===t?C.g+'60':C.border}`,background:tab===t?`${C.g}12`:C.glass,color:tab===t?C.g:C.muted,borderRadius:8,padding:'7px 15px',fontFamily:'Space Grotesk',fontSize:12,fontWeight:700,cursor:'pointer',backdropFilter:'blur(8px)',transition:'all .15s'}}>{l}</button>
+          ))}
+        </div>
+        <div className="glass" style={{padding:'18px 20px'}}>
+          {tab==='users'&&<table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr>{['Naam','E-mail','Vestiging','Rol','Status','Aangemaakt','Actie'].map(h=><th key={h} style={{textAlign:'left',padding:'8px 12px',borderBottom:`1px solid ${C.border}`,fontSize:10,textTransform:'uppercase',color:C.muted}}>{h}</th>)}</tr></thead><tbody>{users.map(u=><tr key={u.email} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:'10px 12px',fontSize:13,fontWeight:600}}>{u.name}</td><td className="mono" style={{padding:'10px 12px',fontSize:12,color:C.muted}}>{u.email}</td><td style={{padding:'10px 12px',fontSize:12,color:C.muted}}>{u.loc}</td><td style={{padding:'10px 12px'}}><Badge color={u.role==='admin'?C.purple:C.blue} small>{u.role}</Badge></td><td style={{padding:'10px 12px'}}><Badge color={u.active?C.g:C.red} small>{u.active?'Actief':'Geblokkeerd'}</Badge></td><td style={{padding:'10px 12px',fontSize:12,color:C.muted}}>{u.date}</td><td style={{padding:'10px 12px'}}><button style={{background:`${u.active?C.red:C.g}15`,color:u.active?C.red:C.g,border:`1px solid ${u.active?C.red:C.g}35`,borderRadius:6,padding:'4px 10px',cursor:'pointer',fontFamily:'Space Grotesk',fontSize:11,fontWeight:700}}>{u.active?'Blokkeer':'Activeer'}</button></td></tr>)}</tbody></table>}
+          {tab==='audit'&&<table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr>{['Tijd','Actie','Gebruiker','Details'].map(h=><th key={h} style={{textAlign:'left',padding:'8px 12px',borderBottom:`1px solid ${C.border}`,fontSize:10,textTransform:'uppercase',color:C.muted}}>{h}</th>)}</tr></thead><tbody>{audit.map((a,i)=><tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td className="mono" style={{padding:'9px 12px',fontSize:12,color:C.muted}}>{a.time}</td><td style={{padding:'9px 12px'}}><Badge color={a.action.includes('ai')?C.purple:a.action.includes('login')?C.blue:C.g} small>{a.action}</Badge></td><td className="mono" style={{padding:'9px 12px',fontSize:12,color:C.muted}}>{a.user}</td><td className="mono" style={{padding:'9px 12px',fontSize:11,color:C.muted}}>{a.detail}</td></tr>)}</tbody></table>}
+          {tab==='reports'&&<table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr>{['Tijd','Titel','Gebruiker','Route','Verloopt'].map(h=><th key={h} style={{textAlign:'left',padding:'8px 12px',borderBottom:`1px solid ${C.border}`,fontSize:10,textTransform:'uppercase',color:C.muted}}>{h}</th>)}</tr></thead><tbody>{[['27 apr 14:22','Sheeter ochtend — hoge downtime','jm@metsa.nl','Complete','27 mei'],['26 apr 22:47','DW08 nacht — alarm 1042 spike','pp@metsa.nl','Basic+','26 mei'],['25 apr 17:03','Sheeter middag — goede shift','jm@metsa.nl','Basic','25 mei']].map((r,i)=><tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td className="mono" style={{padding:'9px 12px',fontSize:12,color:C.muted}}>{r[0]}</td><td style={{padding:'9px 12px',fontSize:12}}>{r[1]}</td><td className="mono" style={{padding:'9px 12px',fontSize:12,color:C.muted}}>{r[2]}</td><td style={{padding:'9px 12px'}}><Badge color={r[3]==='Complete'?C.blue:C.muted} small>{r[3]}</Badge></td><td style={{padding:'9px 12px',fontSize:12,color:C.muted}}>{r[4]}</td></tr>)}</tbody></table>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TWEAKS ────────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{"accentColor":"#00e5a0","showGrid":true,"meshIntensity":12}/*EDITMODE-END*/;
+
+function TweaksPanel({tweaks,setTweak,visible,onClose}){
+  if(!visible)return null;
+  return(
+    <div style={{position:'fixed',bottom:24,right:24,zIndex:9999,background:'rgba(10,11,16,.95)',border:`1px solid ${C.border2}`,borderRadius:14,padding:'18px 20px',width:230,backdropFilter:'blur(20px)',boxShadow:'0 20px 60px rgba(0,0,0,.7)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}><span style={{fontWeight:700,fontSize:13}}>Tweaks</span><button onClick={onClose} style={{background:'none',border:'none',color:C.muted,cursor:'pointer',fontSize:16}}>✕</button></div>
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:C.muted,letterSpacing:'.06em',marginBottom:8}}>Accent kleur</div>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {[['#00e5a0','Groen'],['#60a5fa','Blauw'],['#f59e0b','Amber'],['#a78bfa','Paars']].map(([c,l])=>(
+            <button key={c} onClick={()=>setTweak('accentColor',c)} style={{display:'inline-flex',alignItems:'center',gap:5,background:tweaks.accentColor===c?`${c}20`:'none',border:`1px solid ${tweaks.accentColor===c?c:C.border2}`,borderRadius:6,padding:'4px 8px',cursor:'pointer',color:C.text,fontFamily:'Space Grotesk',fontSize:11}}>
+              <div style={{width:8,height:8,borderRadius:'50%',background:c,boxShadow:`0 0 6px ${c}`}}/>{l}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────
+function App(){
+  const [screen,setScreen]=useState('login');
+  const [tweaksVisible,setTweaksVisible]=useState(false);
+  const [tweaks,setTweaksState]=useState(TWEAK_DEFAULTS);
+  const setTweak=(k,v)=>setTweaksState(p=>{const next={...p,[k]:v};window.parent?.postMessage({type:'__edit_mode_set_keys',edits:next},'*');return next;});
+  useEffect(()=>{
+    const h=e=>{if(e.data?.type==='__activate_edit_mode')setTweaksVisible(true);if(e.data?.type==='__deactivate_edit_mode')setTweaksVisible(false);};
+    window.addEventListener('message',h);
+    window.parent?.postMessage({type:'__edit_mode_available'},'*');
+    return()=>window.removeEventListener('message',h);
+  },[]);
+  return(
+    <>
+      {screen==='login'   &&<LoginScreen setScreen={setScreen}/>}
+      {screen==='builder' &&<BuilderScreen setScreen={setScreen}/>}
+      {screen==='reports' &&<ReportsScreen setScreen={setScreen}/>}
+      {screen==='admin'   &&<AdminScreen setScreen={setScreen}/>}
+      <TweaksPanel tweaks={tweaks} setTweak={setTweak} visible={tweaksVisible} onClose={()=>{setTweaksVisible(false);window.parent?.postMessage({type:'__edit_mode_dismissed'},'*');}}/>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
