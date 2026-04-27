@@ -62,6 +62,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .viewer-sub{font-size:12px;color:var(--muted)}
 .viewer-placeholder{height:320px;background:rgba(255,255,255,.02);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
 .viewer-empty{color:var(--muted);font-size:13px;text-align:center;padding:60px 20px}
+.saved-report-body{background:rgba(255,255,255,.02);border-radius:10px;overflow:auto;min-height:280px;padding:14px}
+.saved-report-body .panel{display:none}
+.saved-report-body .panel.active{display:block}
+.saved-report-body .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.saved-report-body .tab{border:1px solid var(--border);background:var(--glass);color:var(--muted);border-radius:8px;padding:7px 12px;font:700 12px 'Space Grotesk',sans-serif;cursor:pointer}
+.saved-report-body .tab.active{border-color:rgba(0,229,160,.5);background:rgba(0,229,160,.1);color:var(--g)}
 
 .muted{color:var(--muted)}
 </style>
@@ -164,6 +170,7 @@ async function openReport(id) {
   const data = await res.json();
   if (!res.ok) { viewer.innerHTML = `<div class="viewer-empty" style="color:var(--red)">${esc(data.error || 'Failed to open report.')}</div>`; return; }
   current = data.report;
+  const safeHtml = cleanSavedReportHtml(current.html);
   viewer.innerHTML = `
     <div class="viewer-header">
       <div>
@@ -172,8 +179,39 @@ async function openReport(id) {
       </div>
       <button onclick="deleteCurrent()" style="background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.3);border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700">Delete</button>
     </div>
-    <div style="background:rgba(255,255,255,.02);border-radius:10px;overflow:auto;min-height:280px">${current.html}</div>
+    <div class="saved-report-body">${safeHtml}</div>
   `;
+  bindSavedReportTabs();
+}
+
+function cleanSavedReportHtml(html) {
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+  template.content.querySelectorAll('#analysis-layer,.analysis-layer,[data-analysis-layer]').forEach(node => node.remove());
+  return template.innerHTML;
+}
+
+function bindSavedReportTabs() {
+  const root = viewer.querySelector('.saved-report-body');
+  if (!root) return;
+  const tabs = Array.from(root.querySelectorAll('.tab'));
+  const panels = Array.from(root.querySelectorAll('.panel'));
+  if (!tabs.length || !panels.length) return;
+
+  function show(tab, index) {
+    const key = tab.dataset.tab;
+    tabs.forEach(item => item.classList.toggle('active', item === tab));
+    panels.forEach(panel => panel.classList.remove('active'));
+    const target = key ? root.querySelector(`#tab-${CSS.escape(key)}`) : panels[index];
+    (target || panels[index] || panels[0]).classList.add('active');
+  }
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => show(tab, index));
+  });
+
+  const activeTab = tabs.find(tab => tab.classList.contains('active')) || tabs[0];
+  show(activeTab, Math.max(0, tabs.indexOf(activeTab)));
 }
 
 async function deleteCurrent() {

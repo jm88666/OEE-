@@ -3,18 +3,18 @@
     basic: 'Basic: Sens + Event/Alarm',
     pasaban: 'Basic + Pasaban log',
     oee: 'Basic + OEE report',
-    orders: 'Basic + Orders & tonnen',
-    sluis: 'Basic + Sluis report',
-    complete: 'Complete report: alles geladen',
+    orders: 'Basic + Orders & tons',
+    sluis: 'Basic + Sluice report',
+    complete: 'Complete report: all sources loaded',
   };
 
   const scenarioText = {
-    basic: 'Toont de minimale analyse: snelheid, stilstand, reject/sluis-open tijd, event-oorzaken en verbeterpunten op basis van de twee verplichte bestanden.',
-    pasaban: 'Voegt operatorgedrag en machine-interactie toe: resets, start/stop, alarmactivaties, format changes, pallet changes, splices en top Pasaban alarms.',
-    oee: 'Voegt een OEE-laag toe: extra rijdata uit PROMs, availability/performance/quality context en een controlelaag naast de Sens-berekening.',
-    orders: 'Voegt productiecontext toe: orders, meters, tonnen, ton/uur en hoeveel output aan de shift gekoppeld kan worden.',
-    sluis: 'Voegt sluis/rejectgate-verdieping toe: sluisfactoren, sluisregels en extra bewijs voor rejectgate-open tijd.',
-    complete: 'Combineert alles: de basisanalyse plus OEE, sluis, orders/tonnen en de volledige Pasaban log voor het meest complete beeld.',
+    basic: 'Shows the minimum analysis: speed, downtime, reject/sluice-open time, event causes and improvement points based on the two required files.',
+    pasaban: 'Adds operator behavior and machine interaction: resets, start/stop, alarm activations, format changes, pallet changes, splices and top Pasaban alarms.',
+    oee: 'Adds an OEE layer: extra PROMs row data, availability/performance/quality context and a validation layer next to the Sens calculation.',
+    orders: 'Adds production context: orders, meters, tons, tons/hour and how much output can be linked to the shift.',
+    sluis: 'Adds sluice/reject-gate detail: sluice factors, sluice rows and extra evidence for reject-gate-open time.',
+    complete: 'Combines everything: the basic analysis plus OEE, sluice, orders/tons and the full Pasaban log for the most complete view.',
   };
 
   function el(id) { return document.getElementById(id); }
@@ -188,13 +188,13 @@
     if (!upload || document.querySelector('.demo-panel')) return;
     const panel = document.createElement('section');
     panel.className = 'demo-panel';
-    panel.innerHTML = `<div class="title">Demo rapporten</div><div class="demo-grid">
+    panel.innerHTML = `<div class="title">Demo reports</div><div class="demo-grid">
       <button class="demo-scenario" data-scenario="basic">Basic report<span>Sens + Event/Alarm</span></button>
-      <button class="demo-scenario" data-scenario="pasaban">+ Pasaban log<span>resets, alarms, start/stop, operator acties</span></button>
-      <button class="demo-scenario" data-scenario="oee">+ OEE report<span>OEE-context en PROMs controlelaag</span></button>
-      <button class="demo-scenario" data-scenario="orders">+ Orders & tonnen<span>meters, MT, ton/uur en ordercontext</span></button>
-      <button class="demo-scenario" data-scenario="sluis">+ Sluis report<span>sluisfactoren en rejectgate verdieping</span></button>
-      <button class="demo-scenario" data-scenario="complete">Compleet report<span>alle databronnen samen</span></button>
+      <button class="demo-scenario" data-scenario="pasaban">+ Pasaban log<span>resets, alarms, start/stop, operator actions</span></button>
+      <button class="demo-scenario" data-scenario="oee">+ OEE report<span>OEE context and PROMs validation layer</span></button>
+      <button class="demo-scenario" data-scenario="orders">+ Orders & tons<span>meters, MT, tons/hour and order context</span></button>
+      <button class="demo-scenario" data-scenario="sluis">+ Sluice report<span>sluice factors and reject-gate detail</span></button>
+      <button class="demo-scenario" data-scenario="complete">Complete report<span>all data sources combined</span></button>
     </div>`;
     upload.parentNode.insertBefore(panel, upload);
     panel.querySelectorAll('.demo-scenario').forEach(btn => btn.addEventListener('click', () => runScenario(btn.dataset.scenario)));

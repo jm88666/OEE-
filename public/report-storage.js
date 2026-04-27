@@ -15,14 +15,14 @@
   }
   function reportTitle() {
     const machine = $('machine')?.value || 'Machine';
-    const stamp = new Date().toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' });
+    const stamp = new Date().toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
     return `${machine} ${shiftLabel()} ${stamp}`;
   }
   function insertBar(user) {
     if (document.querySelector('.jm-accountbar')) return;
     const bar = document.createElement('div');
     bar.className = 'jm-accountbar';
-    bar.innerHTML = `<div><strong>${user.name || user.email}</strong><span>${user.location || 'Geen vestiging'} · ${user.role === 'admin' ? 'beheerder' : 'gebruiker'}</span></div><nav><a href="/my-reports">Mijn rapporten</a>${user.role === 'admin' ? '<a href="/admin">Beheer</a>' : ''}<button type="button" id="jm-logout">Uitloggen</button></nav>`;
+    bar.innerHTML = `<div><strong>${user.name || user.email}</strong><span>${user.location || 'No site'} · ${user.role === 'admin' ? 'admin' : 'user'}</span></div><nav><a href="/my-reports">My reports</a>${user.role === 'admin' ? '<a href="/admin">Admin</a>' : ''}<button type="button" id="jm-logout">Log out</button></nav>`;
     document.body.prepend(bar);
     document.getElementById('jm-logout').onclick = () => window.jmAuth.logout();
   }
@@ -30,7 +30,7 @@
     if (document.querySelector('.jm-savepanel')) return;
     const panel = document.createElement('section');
     panel.className = 'jm-savepanel';
-    panel.innerHTML = `<div><div class="title">Opslagruimte</div><p class="muted">Sla het gemaakte rapport op zodat jij en beheerders het later kunnen terugzien. Oude rapporten worden automatisch opgeschoond volgens de bewaartermijn.</p></div><button class="btn" id="jm-save-report" disabled>Rapport opslaan</button><span id="jm-save-status" class="muted"></span>`;
+    panel.innerHTML = `<div><div class="title">Storage</div><p class="muted">Save the generated report so you and admins can view it later. Old reports are cleaned up automatically based on the retention setting.</p></div><button class="btn" id="jm-save-report" disabled>Save report</button><span id="jm-save-status" class="muted"></span>`;
     const tabs = $('tabs');
     tabs?.parentNode.insertBefore(panel, tabs);
     $('jm-save-report').onclick = saveReport;
@@ -40,7 +40,7 @@
     const status = $('jm-save-status');
     if (!report || !report.innerHTML.trim() || !lastData) return;
     $('jm-save-report').disabled = true;
-    status.textContent = 'Opslaan...';
+    status.textContent = 'Saving...';
     try {
       const payload = {
         title: reportTitle(),
@@ -48,13 +48,13 @@
         shift: shiftLabel(),
         route: route(lastData),
         sources: sources(lastData),
-        summary: `${route(lastData)} met ${sources(lastData).join(', ')}`,
+        summary: `${route(lastData)} with ${sources(lastData).join(', ')}`,
         html: report.innerHTML,
       };
       const res = await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Opslaan mislukt.');
-      status.textContent = `Opgeslagen: ${data.report.title}`;
+      if (!res.ok) throw new Error(data.error || 'Save failed.');
+      status.textContent = `Saved: ${data.report.title}`;
     } catch (e) {
       status.textContent = e.message;
     } finally {

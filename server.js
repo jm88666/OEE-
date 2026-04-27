@@ -13,10 +13,7 @@ const REPORT_RETENTION_DAYS = parseInt(process.env.REPORT_RETENTION_DAYS || '30'
 const SESSION_DAYS = parseInt(process.env.SESSION_DAYS || '14', 10);
 const AUTH_ENV_NAMES = [
   'LOGIN_PASSWORD',
-  'LOGIN_WACHTWOORD',
-  'LOGINWACHTWOORD',
   'PASSWORD',
-  'WACHTWOORD',
   'JM_ANALYZE_TOOL',
   'JM_ANALYZE_TOOL_PASSWORD',
   'JMANALYZETOOL',
@@ -31,10 +28,9 @@ const AUTH_ENV_KEYS = new Set(AUTH_ENV_NAMES.map(normalizeEnvName));
 const looksLikeAuthEnv = name => {
   const key = normalizeEnvName(name);
   return AUTH_ENV_KEYS.has(key)
-    || (key.includes('LOGIN') && (key.includes('PASSWORD') || key.includes('WACHTWOORD')))
+    || (key.includes('LOGIN') && key.includes('PASSWORD'))
     || (key.includes('JM') && key.includes('ANALYZE'))
-    || key === 'PASSWORD'
-    || key === 'WACHTWOORD';
+    || key === 'PASSWORD';
 };
 const getAuthSecrets = () => [...new Set(Object.entries(process.env)
   .filter(([name, value]) => value && looksLikeAuthEnv(name))
@@ -113,13 +109,13 @@ function sessionUser(req) {
 }
 function requireUser(req, res, next) {
   const user = sessionUser(req);
-  if (!user) return res.status(401).json({ error: 'Niet ingelogd.' });
+  if (!user) return res.status(401).json({ error: 'Not signed in.' });
   req.user = user;
   next();
 }
 function requireAdmin(req, res, next) {
   requireUser(req, res, () => {
-    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Geen beheerrechten.' });
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin permissions required.' });
     next();
   });
 }
@@ -133,7 +129,6 @@ const sendReportBuilder = (res, next) => {
     if (err) return next(err);
     const page = injectScripts(html, [
       '<script src="/auth-client.js"></script>',
-      '<script src="/analysis-layer.js"></script>',
       '<script src="/demo-scenarios.js"></script>',
     ]);
     res.type('html').send(page);
@@ -145,7 +140,7 @@ app.use(express.json({ limit: '50mb' }));
 app.get(['/', '/index.html'], (req, res, next) => sendFile(res, next, 'login.html'));
 app.get(['/report', '/reports', '/jm-report', '/basic-report', '/complete-report'], (req, res, next) => sendReportBuilder(res, next));
 app.get(['/my-reports', '/reports-library'], (req, res, next) => sendFile(res, next, 'reports.html'));
-app.get(['/admin', '/beheer'], (req, res, next) => sendFile(res, next, 'admin.html'));
+app.get('/admin', (req, res, next) => sendFile(res, next, 'admin.html'));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -154,13 +149,13 @@ app.post('/api/auth/register', (req, res) => {
   const cleanEmail = String(email || '').trim().toLowerCase();
   const cleanName = String(name || '').trim();
   const codes = inviteCodes();
-  if (!codes.length) return res.status(503).json({ error: 'Accountcode is nog niet ingesteld.' });
-  if (!codes.includes(String(inviteCode || '').trim())) return res.status(403).json({ error: 'Accountcode is ongeldig.' });
-  if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) return res.status(400).json({ error: 'Vul een geldig e-mailadres in.' });
-  if (String(password || '').length < 8) return res.status(400).json({ error: 'Wachtwoord moet minimaal 8 tekens zijn.' });
+  if (!codes.length) return res.status(503).json({ error: 'Account code is not configured yet.' });
+  if (!codes.includes(String(inviteCode || '').trim())) return res.status(403).json({ error: 'Account code is invalid.' });
+  if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) return res.status(400).json({ error: 'Enter a valid email address.' });
+  if (String(password || '').length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
 
   const users = readJson('users.json', []);
-  if (users.some(u => u.email === cleanEmail)) return res.status(409).json({ error: 'Dit account bestaat al.' });
+  if (users.some(u => u.email === cleanEmail)) return res.status(409).json({ error: 'This account already exists.' });
   const firstUser = users.length === 0;
   const role = firstUser || adminEmails().includes(cleanEmail) ? 'admin' : 'user';
   const user = {
@@ -184,7 +179,7 @@ app.post('/api/auth/login', (req, res) => {
   const cleanEmail = String(email || '').trim().toLowerCase();
   const users = readJson('users.json', []);
   const user = users.find(u => u.email === cleanEmail && u.active !== false);
-  if (!user || !verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: 'E-mail of wachtwoord onjuist.' });
+  if (!user || !verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: 'Email or password is incorrect.' });
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const sessions = readJson('sessions.json', []).filter(s => new Date(s.expiresAt).getTime() > Date.now());
@@ -207,11 +202,11 @@ app.get('/api/auth/me', requireUser, (req, res) => {
 
 app.post('/api/analyze', requireUser, async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === 'plak-hier-je-sleutel') {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld in .env bestand.' });
+  if (!apiKey || apiKey === 'plak-hier-je-sleutel' || apiKey === 'paste-your-key-here') {
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured.' });
   }
   const { prompt } = req.body;
-  if (!prompt) return res.status(400).json({ error: 'Geen prompt meegegeven.' });
+  if (!prompt) return res.status(400).json({ error: 'Missing prompt.' });
   audit('ai_report_generated', req.user, { promptChars: String(prompt).length });
 
   try {
@@ -219,23 +214,23 @@ app.post('/api/analyze', requireUser, async (req, res) => {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 8000,
-      system: 'Je bent expert productie-analist voor industriele snijmachines. Retourneer UITSLUITEND valide JSON zonder markdown.',
+      system: 'You are an expert production analyst for industrial cutting machines. Return valid JSON only, without markdown.',
       messages: [{ role: 'user', content: prompt }]
     });
     res.json({ text: message.content[0].text });
   } catch (err) {
-    console.error('Anthropic API fout:', err.message);
+    console.error('Anthropic API error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/extract-image', requireUser, async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === 'plak-hier-je-sleutel') {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY niet ingesteld.' });
+  if (!apiKey || apiKey === 'plak-hier-je-sleutel' || apiKey === 'paste-your-key-here') {
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured.' });
   }
   const { imageBase64, mimeType } = req.body;
-  if (!imageBase64 || !mimeType) return res.status(400).json({ error: 'Geen afbeelding meegegeven.' });
+  if (!imageBase64 || !mimeType) return res.status(400).json({ error: 'Missing image.' });
   audit('image_extract_used', req.user);
 
   try {
@@ -252,8 +247,8 @@ app.post('/api/extract-image', requireUser, async (req, res) => {
           },
           {
             type: 'text',
-            text: `Extraheer alle getallen uit dit PROMs OEE Detail Rapport.
-Retourneer ALLEEN dit JSON zonder markdown of uitleg:
+            text: `Extract all numbers from this PROMs OEE Detail Report.
+Return only this JSON without markdown or explanation:
 {
   "oee": 0, "nt_rate": 0, "pl_rate": 0,
   "handling_rate": 0, "speed_factor": 0,
@@ -261,8 +256,8 @@ Retourneer ALLEEN dit JSON zonder markdown of uitleg:
   "op_down_min": 0, "run_factor": 0,
   "no_sluis_factor": 0, "norun_min": 0,
   "sluis_min": 0,
-  "stilstand": [
-    {"cat":"", "omschrijving":"", "aantal":0, "duur_min":0, "pct":0}
+  "downtime": [
+    {"cat":"", "description":"", "count":0, "duration_min":0, "pct":0}
   ]
 }`
           }
@@ -272,7 +267,7 @@ Retourneer ALLEEN dit JSON zonder markdown of uitleg:
     const text = message.content.find(c => c.type === 'text')?.text || '';
     res.json({ text });
   } catch (err) {
-    console.error('Vision API fout:', err.message);
+    console.error('Vision API error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -287,8 +282,8 @@ app.get('/api/reports', requireUser, (req, res) => {
 app.post('/api/reports', requireUser, (req, res) => {
   cleanupReports();
   const { title, machine, shift, route, sources, html, summary } = req.body || {};
-  if (!String(title || '').trim()) return res.status(400).json({ error: 'Rapporttitel ontbreekt.' });
-  if (!String(html || '').trim()) return res.status(400).json({ error: 'Rapportinhoud ontbreekt.' });
+  if (!String(title || '').trim()) return res.status(400).json({ error: 'Report title is missing.' });
+  if (!String(html || '').trim()) return res.status(400).json({ error: 'Report content is missing.' });
   const report = {
     id: id('rpt'),
     title: String(title).trim().slice(0, 120),
@@ -316,16 +311,16 @@ app.post('/api/reports', requireUser, (req, res) => {
 app.get('/api/reports/:id', requireUser, (req, res) => {
   cleanupReports();
   const report = readJson('reports.json', []).find(r => r.id === req.params.id);
-  if (!report) return res.status(404).json({ error: 'Rapport niet gevonden.' });
-  if (req.user.role !== 'admin' && report.userId !== req.user.id) return res.status(403).json({ error: 'Geen toegang tot dit rapport.' });
+  if (!report) return res.status(404).json({ error: 'Report not found.' });
+  if (req.user.role !== 'admin' && report.userId !== req.user.id) return res.status(403).json({ error: 'No access to this report.' });
   res.json({ report });
 });
 
 app.delete('/api/reports/:id', requireUser, (req, res) => {
   const reports = readJson('reports.json', []);
   const report = reports.find(r => r.id === req.params.id);
-  if (!report) return res.status(404).json({ error: 'Rapport niet gevonden.' });
-  if (req.user.role !== 'admin' && report.userId !== req.user.id) return res.status(403).json({ error: 'Geen toegang tot dit rapport.' });
+  if (!report) return res.status(404).json({ error: 'Report not found.' });
+  if (req.user.role !== 'admin' && report.userId !== req.user.id) return res.status(403).json({ error: 'No access to this report.' });
   writeJson('reports.json', reports.filter(r => r.id !== req.params.id));
   audit('report_deleted', req.user, { reportId: report.id, title: report.title });
   res.json({ ok: true });
@@ -342,7 +337,7 @@ app.get('/api/admin/audit', requireAdmin, (req, res) => {
 app.patch('/api/admin/users/:id', requireAdmin, (req, res) => {
   const users = readJson('users.json', []);
   const user = users.find(u => u.id === req.params.id);
-  if (!user) return res.status(404).json({ error: 'Gebruiker niet gevonden.' });
+  if (!user) return res.status(404).json({ error: 'User not found.' });
   if (typeof req.body.active === 'boolean') user.active = req.body.active;
   if (req.body.role && ['admin', 'user'].includes(req.body.role)) user.role = req.body.role;
   writeJson('users.json', users);
@@ -358,4 +353,4 @@ app.get('/api/auth-check', (req, res) => {
   res.json({ ok: validPass, configured: authSecrets.length > 0 });
 });
 
-app.listen(PORT, () => console.log(`JMAnalyzeTool draait op http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`JMAnalyzeTool running at http://localhost:${PORT}`));

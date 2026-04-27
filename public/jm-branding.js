@@ -1,13 +1,11 @@
 (() => {
   const APP_NAME = 'JMAnalyzeTool';
   const replacements = [
-    [/OEE Analyse DW08/g, APP_NAME],
-    [/OEE Dashboard — DW08/g, `${APP_NAME} Dashboard`],
+    [/OEE Analysis DW08/g, APP_NAME],
     [/OEE Dashboard \u2014 DW08/g, `${APP_NAME} Dashboard`],
-    [/Metsä NL Winschoten/g, APP_NAME],
     [/Mets\u00e4 NL Winschoten/g, APP_NAME],
     [/Metsa NL Winschoten/g, APP_NAME],
-    [/DW08/g, 'Analyse'],
+    [/DW08/g, 'Analysis'],
     [/metsa/g, APP_NAME],
   ];
 
