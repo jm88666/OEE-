@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mijn rapporten - JMAnalyzeTool</title>
+<script src="/auth-client.js"></script>
+<style>
+:root{--bg:#0e0f11;--bg2:#16181c;--bg3:#1e2128;--border:#2a2d35;--text:#e8eaf0;--muted:#8b8fa8;--green:#3ecf8e;--red:#f04040}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,system-ui,sans-serif}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:22px 32px;border-bottom:1px solid var(--border);background:#0b0c0f}.top h1{margin:0;font-size:24px}.top nav{display:flex;gap:10px;flex-wrap:wrap}.top a,.top button{border:1px solid var(--border);background:var(--bg2);color:var(--text);border-radius:7px;padding:8px 11px;text-decoration:none;font-weight:800;cursor:pointer}.wrap{padding:24px 32px;max-width:1200px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:360px 1fr;gap:16px}.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}.report-item{cursor:pointer}.report-item:hover{border-color:var(--green)}.report-item strong{display:block}.meta{font-size:12px;color:var(--muted);margin-top:5px}.viewer{min-height:420px;overflow:auto}.btn-danger{color:#fff!important;background:var(--red)!important;border-color:var(--red)!important}@media(max-width:900px){.grid{grid-template-columns:1fr}.top{display:block}.top nav{margin-top:12px}}
+</style>
+</head>
+<body>
+<header class="top"><div><h1>Mijn rapporten</h1><div class="muted" id="sub">Laden...</div></div><nav><a href="/report">Nieuw rapport</a><a id="admin-link" href="/admin" style="display:none">Beheer</a><button id="logout">Uitloggen</button></nav></header>
+<main class="wrap"><div class="grid"><section><div id="list"></div></section><section class="card viewer"><div id="viewer" class="muted">Kies een rapport om de inhoud te bekijken.</div></section></div></main>
+<script>
+const list = document.getElementById('list');
+const viewer = document.getElementById('viewer');
+let current = null;
+document.getElementById('logout').onclick = () => window.jmAuth.logout();
+document.addEventListener('jm:user', e => { if(e.detail.user.role === 'admin') document.getElementById('admin-link').style.display='inline-block'; loadReports(); });
+async function loadReports(){
+  const res = await fetch('/api/reports');
+  const data = await res.json();
+  document.getElementById('sub').textContent = `Bewaartermijn: ${data.retentionDays} dagen · ${data.reports.length} rapporten`;
+  list.innerHTML = data.reports.map(r => `<article class="card report-item" data-id="${r.id}"><strong>${escapeHtml(r.title)}</strong><div class="meta">${escapeHtml(r.machine || '-')} · ${escapeHtml(r.shift || '-')} · ${escapeHtml(r.route || '-')}</div><div class="meta">${new Date(r.createdAt).toLocaleString('nl-NL')} · verloopt ${new Date(r.expiresAt).toLocaleDateString('nl-NL')}</div></article>`).join('') || '<div class="card muted">Nog geen rapporten opgeslagen.</div>';
+  list.querySelectorAll('.report-item').forEach(item => item.onclick = () => openReport(item.dataset.id));
+}
+async function openReport(id){
+  const res = await fetch('/api/reports/' + encodeURIComponent(id));
+  const data = await res.json();
+  if(!res.ok){ viewer.textContent = data.error || 'Rapport openen mislukt.'; return; }
+  current = data.report;
+  viewer.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:14px"><div><h2 style="margin:0 0 4px">${escapeHtml(current.title)}</h2><div class="muted">${escapeHtml(current.email)} · ${new Date(current.createdAt).toLocaleString('nl-NL')}</div></div><button class="btn-danger" onclick="deleteCurrent()">Verwijderen</button></div>${current.html}`;
+}
+async function deleteCurrent(){
+  if(!current || !confirm('Rapport verwijderen?')) return;
+  const res = await fetch('/api/reports/' + encodeURIComponent(current.id), { method:'DELETE' });
+  if(res.ok){ current=null; viewer.textContent='Rapport verwijderd.'; loadReports(); }
+}
+function escapeHtml(v){ return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+</script>
+</body>
+</html>
