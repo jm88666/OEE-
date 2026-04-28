@@ -73,6 +73,20 @@ tr:hover td{background:rgba(255,255,255,.01)}
 
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.03em}
 .small-btn{border-radius:6px;padding:4px 10px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;border:1px solid}
+.lab-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:1100px){.lab-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.lab-grid{grid-template-columns:1fr}}
+.lab-card{background:var(--glass);border:1px solid var(--border);border-radius:14px;padding:16px 18px;min-height:210px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.lab-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 100% 0%,var(--accent)22,transparent 36%);pointer-events:none}
+.lab-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;position:relative}
+.lab-title{font-size:15px;font-weight:800;letter-spacing:-.02em}
+.lab-desc{color:var(--muted);font-size:12px;line-height:1.55;position:relative}
+.lab-list{display:grid;gap:5px;position:relative}
+.lab-list div{display:flex;gap:7px;color:var(--muted);font-size:11px;line-height:1.35}
+.lab-list div::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:5px;flex-shrink:0;box-shadow:0 0 8px var(--accent)}
+.lab-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;position:relative}
+.lab-output{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;color:var(--muted);font-size:11px;line-height:1.5;position:relative}
+.lab-card.open .lab-output{display:block}
 .muted{color:var(--muted)}
 </style>
 </head>
@@ -115,6 +129,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <button class="tab-btn active" data-tab="reports">Reports</button>
     <button class="tab-btn" data-tab="users">Users</button>
     <button class="tab-btn" data-tab="audit">Audit log</button>
+    <button class="tab-btn" data-tab="lab">Test lab</button>
   </div>
 
   <div class="table-card" id="content">Loading...</div>
@@ -188,7 +203,8 @@ function renderCards(days) {
 function render(tab) {
   if (tab === 'reports') reportsTable();
   else if (tab === 'users') usersTable();
-  else auditTable();
+  else if (tab === 'audit') auditTable();
+  else testLab();
 }
 
 function reportsTable() {
@@ -237,6 +253,108 @@ function auditTable() {
       <td class="mono" style="font-size:11px;color:var(--muted)">${esc(JSON.stringify(a.details || {}))}</td>
     </tr>`).join('')}</tbody>
   </table>`;
+}
+
+function labFeatures() {
+  const reports = state.reports || [];
+  const complete = reports.filter(r => r.route === 'Complete').length;
+  const withPasaban = reports.filter(r => (r.sources || []).some(s => /pasaban/i.test(s))).length;
+  const withOrders = reports.filter(r => (r.sources || []).some(s => /orders|tons/i.test(s))).length;
+  const aiCalls = state.audit.filter(a => a.type === 'ai_report_generated').length;
+  const machines = [...new Set(reports.map(r => r.machine).filter(Boolean))];
+  return [
+    {
+      id: 'fingerprint', title: 'Shift Fingerprint', accent: 'var(--g)', stage: 'Ready for prototype',
+      desc: 'A compact scorecard that labels each shift by its dominant loss pattern.',
+      tests: ['Speed loss score', 'Stop loss score', 'Reject pressure', 'Startup pressure'],
+      output: `${reports.length} saved reports available. This can start with deterministic scoring from every new report.`
+    },
+    {
+      id: 'loss-tree', title: 'Loss Tree', accent: 'var(--blue)', stage: 'Ready for prototype',
+      desc: 'Break total shift time into running, downtime, speed loss, reject loss and startup loss.',
+      tests: ['Time waterfall', 'Top 3 loss buckets', 'Meeting-ready summary'],
+      output: `${complete} complete reports found. Basic reports can still build a smaller Sens/Event loss tree.`
+    },
+    {
+      id: 'repeat-alarms', title: 'Repeat Alarm Tracker', accent: 'var(--amber)', stage: 'Needs history',
+      desc: 'Find alarms and warnings that keep returning across machines, shifts and users.',
+      tests: ['Top recurring alarm codes', 'Machine trend', 'Shift trend', 'Maintenance watchlist'],
+      output: `${reports.length} reports in storage. Stronger once multiple shifts are saved per machine.`
+    },
+    {
+      id: 'startup', title: 'Order Startup Analyzer', accent: 'var(--purple)', stage: 'Ready for Sens data',
+      desc: 'Detect ramp-up quality per order and format without needing a machine speed curve.',
+      tests: ['Time to 80/90/95%', 'Time to operator max', 'Meters lost during startup'],
+      output: `${withOrders} reports include orders/tons. Sens-only startup analysis can already run in the report builder.`
+    },
+    {
+      id: 'coaching', title: 'Operator Coaching Card', accent: 'var(--g)', stage: 'Hybrid rule + AI',
+      desc: 'Turn deterministic findings into practical coaching without blaming the operator.',
+      tests: ['Neutral wording', 'One next step', 'No raw-data exposure', 'Optional AI rewrite'],
+      output: `${aiCalls} AI calls logged. We can keep default coaching rule-based and use AI only on demand.`
+    },
+    {
+      id: 'quality-check', title: 'Data Quality Check', accent: 'var(--red)', stage: 'High priority',
+      desc: 'Warn before analysis when required columns, shift ranges or timestamps look unreliable.',
+      tests: ['Missing columns', 'Wrong shift window', 'Sensor gaps', 'Events outside shift'],
+      output: 'Best next build candidate: it prevents bad reports before users trust the wrong numbers.'
+    },
+    {
+      id: 'machine-memory', title: 'Machine Memory', accent: 'var(--blue)', stage: 'Admin controlled',
+      desc: 'Store machine-specific baselines, normal alarm patterns and normal startup ranges.',
+      tests: ['Machine baseline', 'Normal max speed range', 'Known recurring alarms'],
+      output: `${machines.length || 0} machines seen in saved reports: ${machines.slice(0, 4).join(', ') || 'none yet'}.`
+    },
+    {
+      id: 'comparison', title: 'Report Comparison', accent: 'var(--purple)', stage: 'Needs two reports',
+      desc: 'Compare shifts, machines, users or sites and show what changed.',
+      tests: ['Today vs yesterday', 'Morning vs afternoon', 'Machine A vs Machine B'],
+      output: reports.length >= 2 ? 'Enough reports available to prototype comparisons.' : 'Save at least two reports to test comparisons.'
+    },
+    {
+      id: 'action-register', title: 'Action Register', accent: 'var(--amber)', stage: 'Workflow idea',
+      desc: 'Convert improvement findings into tracked follow-up actions with owner and status.',
+      tests: ['Owner', 'Due date', 'Status', 'Linked report', 'Admin overview'],
+      output: 'This turns the tool from analysis into continuous improvement tracking.'
+    },
+    {
+      id: 'pdf-export', title: 'Meeting PDF Export', accent: 'var(--g)', stage: 'Presentation layer',
+      desc: 'Create a clean PDF with summary, top losses, top actions and appendix tables.',
+      tests: ['Executive summary', 'Top 3 losses', 'Top 3 actions', 'Appendix'],
+      output: 'Best after Loss Tree and Shift Fingerprint are stable.'
+    }
+  ];
+}
+
+function testLab() {
+  const features = labFeatures();
+  document.getElementById('content').innerHTML = `
+    <div style="margin-bottom:16px">
+      <div class="syne" style="font-size:21px;letter-spacing:-.04em;margin-bottom:5px">Admin test lab</div>
+      <div style="color:var(--muted);font-size:13px;line-height:1.55">Experimental analysis ideas live here first. They are admin-only and do not affect operator reports until we decide a feature is ready.</div>
+    </div>
+    <div class="lab-grid">
+      ${features.map(f => `<article class="lab-card" id="lab-${f.id}" style="--accent:${f.accent}">
+        <div class="lab-top">
+          <div>
+            <div class="lab-title">${esc(f.title)}</div>
+            <div style="margin-top:6px">${badge(f.stage, f.accent)}</div>
+          </div>
+        </div>
+        <div class="lab-desc">${esc(f.desc)}</div>
+        <div class="lab-list">${f.tests.map(t => `<div>${esc(t)}</div>`).join('')}</div>
+        <div class="lab-actions">
+          <button class="small-btn" onclick="toggleLab('${f.id}')" style="background:${f.accent}14;color:${f.accent};border-color:${f.accent}44">Preview test</button>
+          <span class="mono" style="font-size:10px;color:var(--muted)">LAB-${esc(f.id).toUpperCase()}</span>
+        </div>
+        <div class="lab-output">${esc(f.output)}</div>
+      </article>`).join('')}
+    </div>`;
+}
+
+function toggleLab(id) {
+  const card = document.getElementById('lab-' + id);
+  if (card) card.classList.toggle('open');
 }
 
 async function toggleUser(id, active) {
