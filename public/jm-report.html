@@ -590,10 +590,16 @@ function overview(x){
 function timeline(b,pasaban,speed){
   // 3D perspective timeline
   const pct=d=>Math.max(0,Math.min(100,(d-b.s)/(b.e-b.s)*100));
+  const width=(a,z)=>Math.max(.08,pct(z)-pct(a));
+  const speedStops=speedSegments(b,speed,r=>r.spd<=0);
+  const speedRejects=speedSegments(b,speed,r=>r.reject>0);
+  const speedFormats=speedSegments(b,speed,r=>r.format>0);
+  const stopSegments=speedStops.length?speedStops:(pasaban?.stops||[]);
+  const formatSegments=(pasaban?.formats||[]).length?(pasaban?.formats||[]):speedFormats;
   let segs='<div class="seg seg-run" style="left:0;width:100%"></div>';
-  (pasaban?.formats||[]).forEach(f=>segs+=`<div class="seg seg-format" style="left:${pct(f.start)}%;width:${Math.max(.5,pct(f.end)-pct(f.start))}%"></div>`);
-  (pasaban?.stops||[]).forEach(s=>segs+=`<div class="seg seg-stop" style="left:${pct(s.start)}%;width:${Math.max(.5,pct(s.end)-pct(s.start))}%"></div>`);
-  if(speed.rejectMin)segs+=`<div class="seg seg-reject" style="left:8%;width:${Math.min(78,Math.max(2,speed.rejectMin/b.totalMin*78))}%"></div>`;
+  formatSegments.forEach(f=>segs+=`<div class="seg seg-format" title="Format change ${timeRange(f.start,f.end)}" style="left:${pct(f.start)}%;width:${width(f.start,f.end)}%"></div>`);
+  speedRejects.forEach(r=>segs+=`<div class="seg seg-reject" title="Reject gate ${timeRange(r.start,r.end)}" style="left:${pct(r.start)}%;width:${width(r.start,r.end)}%"></div>`);
+  stopSegments.forEach(s=>segs+=`<div class="seg seg-stop" title="Downtime ${timeRange(s.start,s.end)}" style="left:${pct(s.start)}%;width:${width(s.start,s.end)}%"></div>`);
   return `
     <div class="tl-3d-wrap">
       <div class="tl-3d-track">
@@ -606,6 +612,20 @@ function timeline(b,pasaban,speed){
       </div>
       <div class="tl-3d-shadow"></div>
     </div>`;
+}
+
+function speedSegments(b,speed,predicate){
+  const rows=speed?.rows||[];const interval=speed?.interval||.25;const segments=[];let startIdx=null;
+  const close=endIdx=>{
+    if(startIdx==null)return;
+    const start=addMinutes(b.s,startIdx*interval);
+    const end=addMinutes(b.s,Math.max(endIdx,startIdx+1)*interval);
+    if(start<b.e&&end>b.s)segments.push({start:new Date(Math.max(start.getTime(),b.s.getTime())),end:new Date(Math.min(end.getTime(),b.e.getTime())),dur:(end-start)/60000});
+    startIdx=null;
+  };
+  rows.forEach((row,idx)=>{if(predicate(row)){if(startIdx==null)startIdx=idx;}else close(idx);});
+  close(rows.length);
+  return segments.filter(s=>s.end>s.start);
 }
 
 function bar3d(label,value,max,color,unit='min'){
