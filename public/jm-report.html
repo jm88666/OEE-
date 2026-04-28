@@ -406,6 +406,11 @@ async function readRows(file){
   const txt=await file.text();return txt.split(/\r?\n/).filter(Boolean).map(csvSplit);
 }
 function findCol(headers,...keys){return headers.findIndex(h=>keys.some(k=>String(h||'').toLowerCase().includes(k)));}
+function countSegments(rows,predicate){
+  let count=0,on=false;
+  rows.forEach(row=>{const active=predicate(row);if(active&&!on)count++;on=active;});
+  return count;
+}
 function classify(txt){
   const s=String(txt||'').toLowerCase();
   if(/nip|belt|sensor|motor|hydraulic|photocell|alarm|dust|bus|loader|roll|push button/.test(s))return'Machine';
@@ -417,17 +422,21 @@ async function parseSpeed(file){
   const rows=await readRows(file);if(rows.length<2)return null;
   const headers=rows[0].map(x=>String(x||'').trim());
   const iTime=findCol(headers,'time','timestamp','date');const iSp=findCol(headers,'linespeed','line speed','speed');const iMax=findCol(headers,'maxspeed','max speed');
+  const iRun=findCol(headers,'runstatus','run status','running');const iStop=findCol(headers,'stopbit','stop bit');
   const iRg=findCol(headers,'rejectgate','reject gate','sluis');const iRejectDown=findCol(headers,'rejectdowntime','reject downtime','reject down');const iFc=findCol(headers,'formatchg','format');
   const iLen=findCol(headers,'length','lenght','len','vell');
   function pN(s){return parseFloat((s||'').toString().replace(',','.'))||0;}
-  const data=rows.slice(1).map((r,idx)=>({idx,time:iTime>=0?toAnyDate(r[iTime]):null,spd:iSp>=0?pN(r[iSp]):0,max:iMax>=0?pN(r[iMax]):0,rejectOpen:iRg>=0?pN(r[iRg]):0,reject:iRejectDown>=0?pN(r[iRejectDown]):(iRg>=0?pN(r[iRg]):0),format:iFc>=0?pN(r[iFc]):0,len:iLen>=0?pN(r[iLen]):0}));
-  const interval=15/60;const running=data.filter(r=>r.spd>0);const runningMin=running.length*interval;
-  const stopMin=data.filter(r=>r.spd<=0).length*interval;const avgSpeed=running.length?running.reduce((s,r)=>s+r.spd,0)/running.length:0;
+  const data=rows.slice(1).map((r,idx)=>({idx,time:iTime>=0?toAnyDate(r[iTime]):null,spd:iSp>=0?pN(r[iSp]):0,max:iMax>=0?pN(r[iMax]):0,run:iRun>=0?pN(r[iRun]):null,stop:iStop>=0?pN(r[iStop]):null,rejectOpen:iRg>=0?pN(r[iRg]):0,reject:iRejectDown>=0?pN(r[iRejectDown]):(iRg>=0?pN(r[iRg]):0),format:iFc>=0?pN(r[iFc]):0,len:iLen>=0?pN(r[iLen]):0}));
+  const runValues=data.map(r=>r.run).filter(v=>v!=null);const stopValues=data.map(r=>r.stop).filter(v=>v!=null);
+  const runHasSignal=runValues.some(v=>v>0)&&runValues.some(v=>v<=0);const stopHasSignal=stopValues.some(v=>v>0)&&stopValues.some(v=>v<=0);
+  data.forEach(r=>{r.down=runHasSignal?r.run<=0:stopHasSignal?r.stop>0:r.spd<=0;});
+  const interval=15/60;const running=data.filter(r=>!r.down&&r.spd>0);const runningMin=data.filter(r=>!r.down).length*interval;
+  const stopMin=data.filter(r=>r.down).length*interval;const avgSpeed=running.length?running.reduce((s,r)=>s+r.spd,0)/running.length:0;
   const maxSpeed=Math.max(0,...data.map(r=>r.max),...data.map(r=>r.spd));
-  const rejectMin=data.filter(r=>r.reject>0).length*interval;const rejectOpenMin=data.filter(r=>r.rejectOpen>0).length*interval;const formatMin=data.filter(r=>r.format>0).length*interval;
+  const rejectMin=data.filter(r=>r.reject>0).length*interval;const rejectOpenMin=data.filter(r=>r.rejectOpen>0).length*interval;const formatMin=data.filter(r=>r.format>0).length*interval;const formatCount=countSegments(data,r=>r.format>0);
   const lengths=[...new Set(data.map(r=>r.len).filter(Boolean))];
   const perf=maxSpeed?avgSpeed/maxSpeed*100:0;
-  return{rows:data,totalMin:data.length*interval,runningMin,stopMin,avgSpeed,maxSpeed,rejectMin,rejectOpenMin,formatMin,perf,interval,lengths};
+  return{rows:data,totalMin:data.length*interval,runningMin,stopMin,avgSpeed,maxSpeed,rejectMin,rejectOpenMin,formatMin,formatCount,perf,interval,lengths};
 }
 async function parseEvents(file){
   const rows=await readRows(file);if(!rows.length)return{events:[],causes:[]};
@@ -538,7 +547,7 @@ function build(data){
   const total=b.totalMin||speed.totalMin;
   const stopMin=speed.stopMin||(pasaban?.stops.reduce((s,x)=>s+x.dur,0))||0;
   const runningMin=Math.max(0,total-stopMin);const availability=total?runningMin/total*100:0;
-  const rejectMin=speed.rejectMin||0;const formatCount=(pasaban?.formats.length)||(speed.lengths?.length?Math.max(0,speed.lengths.length-1):0);
+  const rejectMin=speed.rejectMin||0;const formatCount=(pasaban?.formats.length)||speed.formatCount||(speed.lengths?.length?Math.max(0,speed.lengths.length-1):0);
   const knownReject=events.causes.filter(e=>/reject|damage|quality|reel|rts|sluis/i.test(e.desc)).reduce((s,e)=>s+(e.dur||0),0);
   const unknownReject=Math.max(0,rejectMin-knownReject);
   const ctx={machine:$('machine').value||'Machine',speed,events,oee,sluis,orders,pasaban,total,stopMin,runningMin,availability,rejectMin,formatCount,knownReject,unknownReject,b};
@@ -600,7 +609,7 @@ function timeline(b,pasaban,speed){
   // 3D perspective timeline
   const pct=d=>Math.max(0,Math.min(100,(d-b.s)/(b.e-b.s)*100));
   const width=(a,z)=>Math.max(.08,pct(z)-pct(a));
-  const speedStops=speedSegments(b,speed,r=>r.spd<=0);
+  const speedStops=speedSegments(b,speed,r=>r.down);
   const speedRejects=speedSegments(b,speed,r=>r.reject>0);
   const speedFormats=speedSegments(b,speed,r=>r.format>0);
   const stopSegments=speedStops.length?speedStops:(pasaban?.stops||[]);
