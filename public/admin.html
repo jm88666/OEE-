@@ -16,16 +16,24 @@
   --text:#f0f2fa;--muted:#4a5070;--dim:#252838;
   --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);
   --glass:rgba(255,255,255,.03);--glass2:rgba(255,255,255,.06);
+  --bg2:#090b10;--nav-bg:rgba(6,7,9,.85);--mesh-a:rgba(167,139,250,.1);--mesh-b:rgba(96,165,250,.08);--noise:.025;
+}
+[data-theme="glass"]{
+  --bg:#11151f;--text:#f6f8ff;--muted:#8a94ad;--dim:#5d6680;
+  --border:rgba(255,255,255,.14);--border2:rgba(255,255,255,.2);
+  --glass:rgba(255,255,255,.085);--glass2:rgba(255,255,255,.14);
+  --bg2:#171d2a;--nav-bg:rgba(19,23,34,.72);--mesh-a:rgba(167,139,250,.16);--mesh-b:rgba(96,165,250,.16);--noise:.035;
 }
 html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
 .syne{font-family:'Syne',sans-serif;font-weight:800}
 .mono{font-family:'Space Mono',monospace}
-body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.025;pointer-events:none;z-index:100}
+body{background:radial-gradient(circle at 14% 0%,var(--mesh-a),transparent 34%),radial-gradient(circle at 86% 12%,var(--mesh-b),transparent 32%),linear-gradient(180deg,var(--bg),var(--bg2))}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:var(--noise);pointer-events:none;z-index:100}
 .mesh{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
-.mesh::before{content:'';position:absolute;top:-20%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse,rgba(167,139,250,.1) 0%,transparent 70%);filter:blur(70px)}
-.mesh::after{content:'';position:absolute;bottom:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(ellipse,rgba(96,165,250,.08) 0%,transparent 70%);filter:blur(80px)}
+.mesh::before{content:'';position:absolute;top:-20%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse,var(--mesh-a) 0%,transparent 70%);filter:blur(70px)}
+.mesh::after{content:'';position:absolute;bottom:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(ellipse,var(--mesh-b) 0%,transparent 70%);filter:blur(80px)}
 
-.nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:rgba(6,7,9,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:var(--nav-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
 .nav-logo{display:flex;align-items:center;gap:10px;font-size:16px;letter-spacing:-.03em}
 .nav-logo-icon{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--g),var(--blue));display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,229,160,.4)}
 .nav-links{display:flex;gap:6px}
@@ -33,6 +41,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .nav-btn:hover{background:var(--glass2)}
 .nav-btn.danger{background:rgba(255,71,87,.12);color:var(--red);border-color:rgba(255,71,87,.3)}
 .avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--g),var(--blue));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#020c07;box-shadow:0 0 10px rgba(0,229,160,.4)}
+.theme-switch{display:flex;gap:4px;padding:3px;border:1px solid var(--border);background:var(--glass);border-radius:10px}
+.theme-btn{border:0;background:transparent;color:var(--muted);border-radius:7px;padding:5px 9px;font:700 11px 'Space Grotesk',sans-serif;cursor:pointer}
+.theme-btn.active{background:var(--glass2);color:var(--text);box-shadow:inset 0 0 0 1px var(--border2)}
 
 .wrap{max-width:1320px;margin:0 auto;padding:28px 24px;position:relative;z-index:1}
 .page-header{margin-bottom:22px}
@@ -78,6 +89,10 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <span class="syne">JM<span style="color:var(--g)">Analyze</span>Tool</span>
   </div>
   <nav class="nav-links">
+    <div class="theme-switch" aria-label="Theme">
+      <button class="theme-btn" data-theme-btn="dark" onclick="setTheme('dark')" type="button">Dark</button>
+      <button class="theme-btn" data-theme-btn="glass" onclick="setTheme('glass')" type="button">Glass</button>
+    </div>
     <a href="/report" class="nav-btn">New report</a>
     <a href="/my-reports" class="nav-btn">My reports</a>
     <button id="logout" class="nav-btn danger">Log out</button>
@@ -107,6 +122,14 @@ tr:hover td{background:rgba(255,255,255,.01)}
 
 <script>
 let state = { reports: [], users: [], audit: [], me: null };
+
+function setTheme(theme) {
+  const next = theme === 'glass' ? 'glass' : 'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem('jm-theme', next);
+  document.querySelectorAll('[data-theme-btn]').forEach(btn => btn.classList.toggle('active', btn.dataset.themeBtn === next));
+}
+setTheme(localStorage.getItem('jm-theme') || 'glass');
 
 document.getElementById('logout').onclick = () => window.jmAuth.logout();
 

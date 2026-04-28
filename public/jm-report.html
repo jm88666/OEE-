@@ -16,17 +16,31 @@
   --text:#f0f2fa;--muted:#4a5070;--dim:#252838;
   --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);
   --glass:rgba(255,255,255,.03);--glass2:rgba(255,255,255,.06);
+  --bg2:#090b10;--nav-bg:rgba(6,7,9,.85);--bar-bg:rgba(6,7,9,.6);--modal-bg:#0d0f16;
+  --field-bg:rgba(255,255,255,.04);--mesh-a:rgba(0,229,160,.1);--mesh-b:rgba(96,165,250,.07);--noise:.025;
+}
+[data-theme="glass"]{
+  --bg:#11151f;--text:#f6f8ff;--muted:#8a94ad;--dim:#5d6680;
+  --border:rgba(255,255,255,.14);--border2:rgba(255,255,255,.2);
+  --glass:rgba(255,255,255,.085);--glass2:rgba(255,255,255,.14);
+  --bg2:#171d2a;--nav-bg:rgba(19,23,34,.72);--bar-bg:rgba(21,26,38,.66);--modal-bg:#171c28;
+  --field-bg:rgba(255,255,255,.09);--mesh-a:rgba(0,229,160,.16);--mesh-b:rgba(96,165,250,.16);--noise:.035;
 }
 html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
 .syne{font-family:'Syne',sans-serif;font-weight:800}
 .mono{font-family:'Space Mono',monospace}
-body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.025;pointer-events:none;z-index:100}
+body{background:
+  radial-gradient(circle at 16% 0%,var(--mesh-a),transparent 34%),
+  radial-gradient(circle at 88% 12%,var(--mesh-b),transparent 32%),
+  linear-gradient(180deg,var(--bg),var(--bg2) 100%);
+}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:var(--noise);pointer-events:none;z-index:100}
 .mesh{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
-.mesh::before{content:'';position:absolute;top:-20%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse,rgba(0,229,160,.1) 0%,transparent 70%);filter:blur(70px)}
-.mesh::after{content:'';position:absolute;bottom:-20%;right:-10%;width:55%;height:55%;background:radial-gradient(ellipse,rgba(96,165,250,.07) 0%,transparent 70%);filter:blur(80px)}
+.mesh::before{content:'';position:absolute;top:-20%;left:-10%;width:60%;height:60%;background:radial-gradient(ellipse,var(--mesh-a) 0%,transparent 70%);filter:blur(70px)}
+.mesh::after{content:'';position:absolute;bottom:-20%;right:-10%;width:55%;height:55%;background:radial-gradient(ellipse,var(--mesh-b) 0%,transparent 70%);filter:blur(80px)}
 
 /* NAV */
-.nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:rgba(6,7,9,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:54px;background:var(--nav-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
 .nav-logo{display:flex;align-items:center;gap:10px;font-size:16px;letter-spacing:-.03em}
 .nav-logo-icon{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--g),var(--blue));display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,229,160,.4)}
 .nav-links{display:flex;gap:6px}
@@ -34,6 +48,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .nav-btn:hover{background:var(--glass2)}
 .nav-btn.danger{background:rgba(255,71,87,.12);color:var(--red);border-color:rgba(255,71,87,.3)}
 .avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--g),var(--blue));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#020c07;box-shadow:0 0 10px rgba(0,229,160,.4)}
+.theme-switch{display:flex;gap:4px;padding:3px;border:1px solid var(--border);background:var(--glass);border-radius:10px}
+.theme-btn{border:0;background:transparent;color:var(--muted);border-radius:7px;padding:5px 9px;font:700 11px 'Space Grotesk',sans-serif;cursor:pointer}
+.theme-btn.active{background:var(--glass2);color:var(--text);box-shadow:inset 0 0 0 1px var(--border2)}
+@media(max-width:720px){.nav{padding:0 14px}.nav-logo span{display:none}.theme-btn{padding:5px 7px}.nav-btn{padding:7px 9px}.user-email{display:none}}
 
 /* WRAP */
 .wrap{padding:28px 32px;max-width:1320px;margin:0 auto;position:relative;z-index:1}
@@ -52,7 +70,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 /* FIELDS */
 .fields{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .field label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px}
-.field input,.field select{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:var(--text);border-radius:8px;padding:9px 11px;font-family:'Space Grotesk',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+.field input,.field select{width:100%;background:var(--field-bg);border:1px solid rgba(255,255,255,.07);color:var(--text);border-radius:8px;padding:9px 11px;font-family:'Space Grotesk',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
 .field input:focus,.field select:focus{border-color:var(--g)}
 .field select option{background:#0c0e15}
 
@@ -172,7 +190,7 @@ tr:last-child td{border-bottom:none}
 /* SAVE MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:#0d0f16;border:1px solid var(--border2);border-radius:16px;padding:24px 28px;width:min(100%,440px);position:relative}
+.modal{background:var(--modal-bg);border:1px solid var(--border2);border-radius:16px;padding:24px 28px;width:min(100%,440px);position:relative}
 
 .muted{color:var(--muted)}
 .demo-banner{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:var(--amber)}
@@ -192,6 +210,10 @@ tr:last-child td{border-bottom:none}
     <span class="syne">JM<span style="color:var(--g)">Analyze</span>Tool</span>
   </div>
   <nav class="nav-links">
+    <div class="theme-switch" aria-label="Theme">
+      <button class="theme-btn" data-theme-btn="dark" onclick="setTheme('dark')" type="button">Dark</button>
+      <button class="theme-btn" data-theme-btn="glass" onclick="setTheme('glass')" type="button">Glass</button>
+    </div>
     <a href="/my-reports" class="nav-btn">My reports</a>
     <a id="admin-link" href="/admin" class="nav-btn" style="display:none">Admin</a>
     <button id="logout-btn" class="nav-btn danger">Log out</button>
@@ -203,7 +225,7 @@ tr:last-child td{border-bottom:none}
 </header>
 
 <!-- REPORT HEADER (after build) -->
-<div id="report-bar" style="display:none;padding:12px 28px;border-bottom:1px solid var(--border);display:none;align-items:center;justify-content:space-between;background:rgba(6,7,9,.6);backdrop-filter:blur(12px);position:sticky;top:54px;z-index:40">
+<div id="report-bar" style="display:none;padding:12px 28px;border-bottom:1px solid var(--border);display:none;align-items:center;justify-content:space-between;background:var(--bar-bg);backdrop-filter:blur(12px);position:sticky;top:54px;z-index:40">
   <div>
     <div style="font-size:15px;font-weight:700;letter-spacing:-.02em" id="report-bar-title">Report</div>
     <div style="font-size:12px;color:var(--muted);margin-top:1px" id="report-bar-sub"></div>
@@ -337,6 +359,7 @@ const $ = id => document.getElementById(id);
 const fmt = (n,d=1) => Number.isFinite(n) ? Number(n).toFixed(d) : '-';
 const minFmt = n => `${fmt(n,1)} min`;
 const pctFmt = n => `${fmt(n,1)}%`;
+const escHtml = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 let _lastBuildData = null;
 let _lastBuildCtx = null;
 
@@ -352,6 +375,13 @@ const csvSplit = line => {
   for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(q&&line[i+1]==='"'){cur+='"';i++}else q=!q}else if(ch===sep&&!q){out.push(cur);cur=''}else cur+=ch}
   out.push(cur);return out.map(x=>x.trim());
 };
+function setTheme(theme){
+  const next=theme==='glass'?'glass':'dark';
+  document.documentElement.dataset.theme=next;
+  localStorage.setItem('jm-theme',next);
+  document.querySelectorAll('[data-theme-btn]').forEach(btn=>btn.classList.toggle('active',btn.dataset.themeBtn===next));
+}
+setTheme(localStorage.getItem('jm-theme')||'glass');
 function toDate(s){const m=String(s||'').match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);if(!m)return null;return new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]}`)}
 function hhmm(d){return d?`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`:'-'}
 function setShift(v){if(v==='custom')return;const[a,b]=v.split('-');$('shift-start').value=a;$('shift-end').value=b;}
@@ -793,10 +823,94 @@ function improve(items){
   const cc={focus:'var(--red)',warn:'var(--amber)',ok:'var(--g)'};
   const ic={focus:'^','warn':'!','ok':'OK'};
   return`<div style="margin-bottom:16px"><div class="syne" style="font-size:20px;letter-spacing:-.03em;margin-bottom:4px">Priority actions</div><div style="color:var(--muted);font-size:13px">Based on the uploaded data files.</div></div>
+  <div class="card live-only" style="display:flex;align-items:center;justify-content:space-between;gap:14px;border-color:rgba(167,139,250,.28);background:rgba(167,139,250,.08)">
+    <div>
+      <div class="sl" style="margin-bottom:6px"><div class="sl-accent" style="background:var(--purple)"></div>AI suggestions</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Use AI for the final interpretation layer</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5">The calculated report stays deterministic. This asks AI to turn the priority actions into practical shift coaching.</div>
+    </div>
+    <button class="btn-glow" id="ai-suggest-btn" onclick="generateAiSuggestions()" type="button" style="white-space:nowrap;background:var(--purple);box-shadow:0 0 20px rgba(167,139,250,.28)">AI suggestions</button>
+  </div>
+  <div id="ai-suggestion-output" class="live-only"></div>
   ${items.map(([cls,t,b])=>`<div class="imp" style="background:${cc[cls]}08;border-color:${cc[cls]}25;margin-bottom:10px;backdrop-filter:blur(10px)">
     <div style="width:30px;height:30px;border-radius:50%;background:${cc[cls]}20;border:1px solid ${cc[cls]}40;display:flex;align-items:center;justify-content:center;font-size:13px;color:${cc[cls]};flex-shrink:0">${ic[cls]}</div>
     <div><div style="font-size:13px;font-weight:700;margin-bottom:5px">${t}</div><div style="font-size:12px;color:var(--muted);line-height:1.6">${b}</div></div>
   </div>`).join('')}`;
+}
+
+function buildAiSuggestionPrompt(){
+  const x=_lastBuildCtx;if(!x)return'';
+  const perf=x.operatorPerf||analyzeOrderPerformance(x);
+  const improvements=makeImprovements(x).map(([,title,body])=>`- ${title}: ${body}`).join('\n');
+  const topEvents=(x.events?.causes||[]).slice(0,12).map(e=>`- ${e.time||'-'} | ${minFmt(e.dur||0)} | ${e.desc}`).join('\n')||'- No event rows found';
+  const topAlarms=(x.pasaban?.alarms||[]).slice(0,8).map(a=>`- ${a.code} ${a.desc}: ${a.count}x`).join('\n')||'- No Pasaban alarms loaded';
+  return `Create concise practical shift-improvement suggestions in English for JMAnalyzeTool.
+Return JSON only with this shape:
+{"summary":"","actions":[{"title":"","why":"","next_step":""}],"operator_coaching":"","machine_focus":""}
+
+Context:
+Machine: ${x.machine}
+Shift: ${$('shift-start').value}-${$('shift-end').value}
+Availability: ${pctFmt(x.availability)}
+Performance: ${pctFmt(x.speed?.perf||0)}
+Reject gate open: ${minFmt(x.rejectMin||0)}
+Downtime: ${minFmt(x.stopMin||0)}
+Detected order blocks: ${perf.orders.length}
+Orders reaching >=95% machine max: ${perf.hitCount}/${perf.orders.length}
+Theoretical time lost below machine max: ${minFmt(perf.totalLost||0)}
+Pasaban resets: ${x.pasaban?.resets||0}
+
+Calculated priority actions:
+${improvements}
+
+Top event/alarm rows:
+${topEvents}
+
+Top Pasaban alarms:
+${topAlarms}`;
+}
+
+function renderAiSuggestions(payload){
+  const data=parseAiJson(payload);
+  const actions=Array.isArray(data.actions)?data.actions:[];
+  return `<div class="card live-only" style="border-color:rgba(167,139,250,.24);background:rgba(167,139,250,.06)">
+    <div class="sl"><div class="sl-accent" style="background:var(--purple)"></div>AI interpretation</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:10px">${escHtml(data.summary||'AI suggestions ready.')}</div>
+    <div class="grid2">
+      ${actions.slice(0,4).map(a=>`<div class="imp" style="background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.35);margin-bottom:0">
+        <div style="width:28px;height:28px;border-radius:50%;background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.4);display:flex;align-items:center;justify-content:center;color:var(--purple);font-weight:800">AI</div>
+        <div><div style="font-size:13px;font-weight:700;margin-bottom:5px">${escHtml(a.title||'Suggestion')}</div><div style="font-size:12px;color:var(--muted);line-height:1.55">${escHtml(a.why||'')} ${a.next_step?`<br><span style="color:var(--text)">Next:</span> ${escHtml(a.next_step)}`:''}</div></div>
+      </div>`).join('')||'<div style="color:var(--muted);font-size:12px">No AI actions returned.</div>'}
+    </div>
+    ${data.operator_coaching?`<div style="font-size:12px;color:var(--muted);line-height:1.55;margin-top:12px"><span style="color:var(--text);font-weight:700">Operator coaching:</span> ${escHtml(data.operator_coaching)}</div>`:''}
+    ${data.machine_focus?`<div style="font-size:12px;color:var(--muted);line-height:1.55;margin-top:6px"><span style="color:var(--text);font-weight:700">Machine focus:</span> ${escHtml(data.machine_focus)}</div>`:''}
+  </div>`;
+}
+
+function parseAiJson(payload){
+  if(typeof payload!=='string')return payload||{};
+  try{return JSON.parse(payload);}catch(_){}
+  const match=payload.match(/\{[\s\S]*\}/);
+  if(match){try{return JSON.parse(match[0]);}catch(_){}}
+  return {summary:payload,actions:[]};
+}
+
+async function generateAiSuggestions(){
+  const btn=$('ai-suggest-btn');const out=$('ai-suggestion-output');
+  if(!out)return;
+  if(!window.jmAuth?.token()){out.innerHTML='<div class="card live-only" style="color:var(--amber)">Sign in to use AI suggestions.</div>';return;}
+  btn.disabled=true;btn.textContent='Thinking...';
+  out.innerHTML='<div class="card live-only" style="color:var(--muted)">AI is reading the calculated report...</div>';
+  try{
+    const res=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:buildAiSuggestionPrompt()})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error||'AI suggestions failed.');
+    out.innerHTML=renderAiSuggestions(data.text);
+  }catch(e){
+    out.innerHTML=`<div class="card live-only" style="color:var(--red)">AI suggestions failed: ${escHtml(e.message)}</div>`;
+  }finally{
+    btn.disabled=false;btn.textContent='AI suggestions';
+  }
 }
 
 function bindTabs(){
@@ -827,6 +941,12 @@ function resetToUpload(){
 // Section
 function openSaveModal(){$('save-modal').classList.add('open');$('save-title').focus();}
 function closeSaveModal(){$('save-modal').classList.remove('open');$('save-msg').textContent='';}
+function reportSnapshotHtml(){
+  const template=document.createElement('template');
+  template.innerHTML=$('report').innerHTML;
+  template.content.querySelectorAll('.live-only').forEach(node=>node.remove());
+  return template.innerHTML;
+}
 
 async function saveReport(){
   const title=$('save-title').value.trim();if(!title){$('save-msg').textContent='Enter a title.';$('save-msg').style.color='var(--red)';return;}
@@ -835,7 +955,7 @@ async function saveReport(){
     const ctx=_lastBuildCtx;const opt=['oee','sluis','orders','pasaban'].filter(k=>files[k]);
     const route=opt.length?'Complete':'Basic';
     const sources=['Sens speeds','Event & Alarm'].concat(opt.map(k=>({oee:'OEE report',sluis:'Sluice report',orders:'Orders & tons',pasaban:'Pasaban log'}[k])));
-    const html=$('report').innerHTML;
+    const html=reportSnapshotHtml();
     const res=await fetch('/api/reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,machine:ctx?.machine||'',shift:`${$('shift-start').value}-${$('shift-end').value}`,route,sources,html,summary:''})});
     const data=await res.json();
     if(!res.ok)throw new Error(data.error||'Save failed.');
