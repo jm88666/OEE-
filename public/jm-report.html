@@ -146,9 +146,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .seg{position:absolute;top:0;height:100%}
 .seg-run{background:linear-gradient(180deg,rgba(0,229,160,.28),rgba(0,229,160,.14))}
 .seg-run::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,229,160,.7),transparent)}
-.seg-stop{background:rgba(255,71,87,.55);border-right:1px solid rgba(255,71,87,.8);border-left:1px solid rgba(255,71,87,.4);background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.15) 4px,rgba(0,0,0,.15) 8px)}
-.seg-reject{background:rgba(245,158,11,.5);border-right:1px solid rgba(245,158,11,.8)}
-.seg-format{background:rgba(96,165,250,.5);border-right:1px solid rgba(96,165,250,.8)}
+.seg-stop{top:8%;height:28%;background:rgba(255,71,87,.72);border-right:1px solid rgba(255,71,87,.9);border-left:1px solid rgba(255,71,87,.45);background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.15) 4px,rgba(0,0,0,.15) 8px);box-shadow:0 0 10px rgba(255,71,87,.28)}
+.seg-reject{top:38%;height:26%;background:rgba(245,158,11,.72);border-right:1px solid rgba(245,158,11,.9);box-shadow:0 0 10px rgba(245,158,11,.25)}
+.seg-format{top:66%;height:24%;background:rgba(96,165,250,.75);border-right:1px solid rgba(96,165,250,.9);box-shadow:0 0 10px rgba(96,165,250,.24)}
 .tl-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:10px;font-family:'Space Mono',monospace}
 .tl-legend{display:flex;gap:14px;flex-wrap:wrap}
 .tl-dot{width:10px;height:6px;border-radius:2px;display:inline-block;margin-right:4px}
@@ -383,6 +383,14 @@ function setTheme(theme){
 }
 setTheme(localStorage.getItem('jm-theme')||'glass');
 function toDate(s){const m=String(s||'').match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);if(!m)return null;return new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]}`)}
+function toAnyDate(s){
+  const v=String(s||'').trim();
+  let m=v.match(/(\d{2})-(\d{2})-(\d{4})[_\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if(m)return new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]||'00'}`);
+  m=v.match(/(\d{2})\/(\d{2})\/(\d{4})[_\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if(m)return new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]||'00'}`);
+  const d=new Date(v);return Number.isNaN(d.getTime())?null:d;
+}
 function hhmm(d){return d?`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`:'-'}
 function setShift(v){if(v==='custom')return;const[a,b]=v.split('-');$('shift-start').value=a;$('shift-end').value=b;}
 $('shift').onchange=e=>setShift(e.target.value);
@@ -408,18 +416,18 @@ function classify(txt){
 async function parseSpeed(file){
   const rows=await readRows(file);if(rows.length<2)return null;
   const headers=rows[0].map(x=>String(x||'').trim());
-  const iSp=findCol(headers,'linespeed','line speed','speed');const iMax=findCol(headers,'maxspeed','max speed');
-  const iRg=findCol(headers,'rejectgate','reject gate','sluis');const iFc=findCol(headers,'formatchg','format');
+  const iTime=findCol(headers,'time','timestamp','date');const iSp=findCol(headers,'linespeed','line speed','speed');const iMax=findCol(headers,'maxspeed','max speed');
+  const iRg=findCol(headers,'rejectgate','reject gate','sluis');const iRejectDown=findCol(headers,'rejectdowntime','reject downtime','reject down');const iFc=findCol(headers,'formatchg','format');
   const iLen=findCol(headers,'length','lenght','len','vell');
   function pN(s){return parseFloat((s||'').toString().replace(',','.'))||0;}
-  const data=rows.slice(1).map((r,idx)=>({idx,spd:iSp>=0?pN(r[iSp]):0,max:iMax>=0?pN(r[iMax]):0,reject:iRg>=0?pN(r[iRg]):0,format:iFc>=0?pN(r[iFc]):0,len:iLen>=0?pN(r[iLen]):0}));
+  const data=rows.slice(1).map((r,idx)=>({idx,time:iTime>=0?toAnyDate(r[iTime]):null,spd:iSp>=0?pN(r[iSp]):0,max:iMax>=0?pN(r[iMax]):0,rejectOpen:iRg>=0?pN(r[iRg]):0,reject:iRejectDown>=0?pN(r[iRejectDown]):(iRg>=0?pN(r[iRg]):0),format:iFc>=0?pN(r[iFc]):0,len:iLen>=0?pN(r[iLen]):0}));
   const interval=15/60;const running=data.filter(r=>r.spd>0);const runningMin=running.length*interval;
   const stopMin=data.filter(r=>r.spd<=0).length*interval;const avgSpeed=running.length?running.reduce((s,r)=>s+r.spd,0)/running.length:0;
   const maxSpeed=Math.max(0,...data.map(r=>r.max),...data.map(r=>r.spd));
-  const rejectMin=data.filter(r=>r.reject>0).length*interval;const formatMin=data.filter(r=>r.format>0).length*interval;
+  const rejectMin=data.filter(r=>r.reject>0).length*interval;const rejectOpenMin=data.filter(r=>r.rejectOpen>0).length*interval;const formatMin=data.filter(r=>r.format>0).length*interval;
   const lengths=[...new Set(data.map(r=>r.len).filter(Boolean))];
   const perf=maxSpeed?avgSpeed/maxSpeed*100:0;
-  return{rows:data,totalMin:data.length*interval,runningMin,stopMin,avgSpeed,maxSpeed,rejectMin,formatMin,perf,interval,lengths};
+  return{rows:data,totalMin:data.length*interval,runningMin,stopMin,avgSpeed,maxSpeed,rejectMin,rejectOpenMin,formatMin,perf,interval,lengths};
 }
 async function parseEvents(file){
   const rows=await readRows(file);if(!rows.length)return{events:[],causes:[]};
@@ -525,7 +533,8 @@ function routeStatus(){
 
 function build(data){
   const{speed,events,oee,sluis,orders,pasaban}=data;
-  const b=pasaban?.bounds||shiftBounds(new Date());
+  const speedBase=speed.rows.find(r=>r.time)?.time||new Date();
+  const b=pasaban?.bounds||shiftBounds(speedBase);
   const total=b.totalMin||speed.totalMin;
   const stopMin=speed.stopMin||(pasaban?.stops.reduce((s,x)=>s+x.dur,0))||0;
   const runningMin=Math.max(0,total-stopMin);const availability=total?runningMin/total*100:0;
@@ -562,7 +571,7 @@ function overview(x){
   return`<div class="kpis">
     ${kpi('Machine',x.machine,'analysis context','green')}
     ${kpi('Performance',pctFmt(x.speed.perf),'of max possible speed','amber')}
-    ${kpi('Reject gate',minFmt(x.rejectMin),`${pctFmt(x.rejectMin/x.total*100)} of shift`,'red')}
+    ${kpi('Reject time',minFmt(x.rejectMin),`${pctFmt(x.rejectMin/x.total*100)} of shift`,'red')}
     ${kpi('Downtime',minFmt(x.stopMin),`${pctFmt(x.stopMin/x.total*100)} of shift`,'amber')}
     ${kpi('Availability',pctFmt(x.availability),`${fmt(x.runningMin,0)} / ${fmt(x.total,0)} min`,'green')}
   </div>
@@ -571,7 +580,7 @@ function overview(x){
     ${tl}
     <div class="tl-labels"><span>${hhmm(x.b.s)}</span><span>${hhmm(x.b.e)}</span></div>
     <div class="tl-legend">
-      ${[['Running','var(--g)'],['Downtime','var(--red)'],['Format change','var(--blue)'],['Sluice/reject','var(--amber)']].map(([l,c])=>`<span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span class="tl-dot" style="background:${c}"></span>${l}</span>`).join('')}
+      ${[['Running','var(--g)'],['Downtime','var(--red)'],['Format change','var(--blue)'],['Reject time','var(--amber)']].map(([l,c])=>`<span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span class="tl-dot" style="background:${c}"></span>${l}</span>`).join('')}
     </div>
   </div>
   <div class="grid2">
@@ -618,8 +627,8 @@ function speedSegments(b,speed,predicate){
   const rows=speed?.rows||[];const interval=speed?.interval||.25;const segments=[];let startIdx=null;
   const close=endIdx=>{
     if(startIdx==null)return;
-    const start=addMinutes(b.s,startIdx*interval);
-    const end=addMinutes(b.s,Math.max(endIdx,startIdx+1)*interval);
+    const start=rows[startIdx]?.time||addMinutes(b.s,startIdx*interval);
+    const end=rows[endIdx]?.time||addMinutes(b.s,Math.max(endIdx,startIdx+1)*interval);
     if(start<b.e&&end>b.s)segments.push({start:new Date(Math.max(start.getTime(),b.s.getTime())),end:new Date(Math.min(end.getTime(),b.e.getTime())),dur:(end-start)/60000});
     startIdx=null;
   };
@@ -787,7 +796,7 @@ function machine(x){
 
 function quality(x){
   return`<div class="kpis">
-    ${kpi('Reject gate open',minFmt(x.rejectMin),'Sens data','red')}
+    ${kpi('Reject time',minFmt(x.rejectMin),'Sens data','red')}
     ${kpi('Known cause',minFmt(x.knownReject),'Event & Alarm','green')}
     ${kpi('Unknown reject',minFmt(x.unknownReject),'gap to explain','red')}
     ${kpi('Quality events',`${x.events.quality.length}x`,'Event & Alarm','amber')}
@@ -873,7 +882,7 @@ Machine: ${x.machine}
 Shift: ${$('shift-start').value}-${$('shift-end').value}
 Availability: ${pctFmt(x.availability)}
 Performance: ${pctFmt(x.speed?.perf||0)}
-Reject gate open: ${minFmt(x.rejectMin||0)}
+Reject time: ${minFmt(x.rejectMin||0)}
 Downtime: ${minFmt(x.stopMin||0)}
 Detected order blocks: ${perf.orders.length}
 Orders reaching >=95% machine max: ${perf.hitCount}/${perf.orders.length}
