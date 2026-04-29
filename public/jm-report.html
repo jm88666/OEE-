@@ -709,6 +709,10 @@ function speedSegments(b,speed,predicate){
   return segments.filter(s=>s.end>s.start);
 }
 
+function rowsForSegments(segments,label,color='var(--red)'){
+  return segments.map(s=>`<tr><td class="mono" style="color:${color};font-size:11px">${timeRange(s.start,s.end)}</td><td class="mono">${minFmt(s.dur||0)}</td><td style="color:var(--muted)">${label}</td></tr>`).join('');
+}
+
 function bar3d(label,value,max,color,unit='min'){
   const pct=Math.max(4,Math.min(100,value/max*100));
   const depth=8;
@@ -844,18 +848,27 @@ function operator(x){
   </div>`;
 }
 function machine(x){
+  const sensStops=speedSegments(x.b,x.speed,r=>r.down).sort((a,b)=>b.dur-a.dur);
+  const allEvents=[...(x.events.causes||[]),...(x.events.events||[])]
+    .filter((e,i,arr)=>e&&e.desc&&arr.findIndex(o=>o.time===e.time&&o.desc===e.desc)===i)
+    .sort((a,b)=>(b.dur||0)-(a.dur||0));
+  const machineEvents=allEvents.filter(e=>classify(e.desc)==='Machine');
+  const eventRows=[
+    rowsForSegments(sensStops.slice(0,20),'Sens downtime / RunStatus stop','var(--red)'),
+    allEvents.slice(0,50).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time||'-'}</td><td class="mono" style="color:${classify(e.desc)==='Machine'?'var(--red)':classify(e.desc)==='Quality'?'var(--amber)':'var(--blue)'}">${minFmt(e.dur||0)}</td><td style="color:var(--muted)">${classify(e.desc)} - ${e.desc}</td></tr>`).join('')
+  ].join('');
   return`<div class="kpis">
-    ${kpi('Machine events',`${x.events.machine.length}x`,'Event & Alarm','red')}
-    ${kpi('Machine stops',`${x.pasaban?.stops.length||0}x`,'Pasaban','red')}
+    ${kpi('Machine events',`${machineEvents.length}x`,'classified machine events','red')}
+    ${kpi('Sens stops',`${sensStops.length}x`,minFmt(sensStops.reduce((s,x)=>s+(x.dur||0),0)),'red')}
+    ${kpi('All events',`${allEvents.length}x`,'Event & Alarm rows','blue')}
     ${kpi('Alarm activations',`${x.pasaban?.alarmCount||0}x`,'Pasaban raw','amber')}
     ${kpi('Reset signals',`${x.pasaban?.resets||0}x`,'Pasaban','purple')}
-    ${kpi('Availability',pctFmt(x.availability),'Sens/shift','green')}
   </div>
   <div class="grid2">
     <div class="card">
-      <div class="sl"><div class="sl-accent" style="background:var(--red)"></div>Machine events</div>
+      <div class="sl"><div class="sl-accent" style="background:var(--red)"></div>Stops & events</div>
       <table><thead><tr><th>Time</th><th>Duration</th><th>Description</th></tr></thead>
-      <tbody>${x.events.machine.slice(0,20).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--red);font-size:11px">${minFmt(e.dur||0)}</td><td style="color:var(--muted)">${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">No machine events found.</td></tr>'}</tbody>
+      <tbody>${eventRows||'<tr><td colspan="3" style="color:var(--muted)">No stops or events found.</td></tr>'}</tbody>
       </table>
     </div>
     <div class="card">
@@ -867,28 +880,42 @@ function machine(x){
 }
 
 function quality(x){
+  const rejectSegments=speedSegments(x.b,x.speed,r=>r.reject>0).sort((a,b)=>b.dur-a.dur);
+  const rejectTotal=rejectSegments.reduce((s,r)=>s+(r.dur||0),0);
+  const qualityEvents=[...(x.events.quality||[]),...(x.events.causes||[]).filter(e=>/reject|quality|reel|rts|sluis|damage|web|sheet|mark|gate/i.test(e.desc||''))]
+    .filter((e,i,arr)=>e&&e.desc&&arr.findIndex(o=>o.time===e.time&&o.desc===e.desc)===i)
+    .sort((a,b)=>(b.dur||0)-(a.dur||0));
+  const rows=[
+    rowsForSegments(rejectSegments.slice(0,24),'Sens reject gate / reject window','var(--amber)'),
+    qualityEvents.slice(0,30).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time||'-'}</td><td class="mono" style="color:var(--red);font-size:11px">${minFmt(e.dur||0)}</td><td style="color:var(--muted)">${e.desc}</td></tr>`).join('')
+  ].join('');
   return`<div class="kpis">
     ${kpi('Reject time',minFmt(x.rejectMin),'Sens data','red')}
     ${kpi('Known cause',minFmt(x.knownReject),'Event & Alarm','green')}
     ${kpi('Unknown reject',minFmt(x.unknownReject),'gap to explain','red')}
-    ${kpi('Quality events',`${x.events.quality.length}x`,'Event & Alarm','amber')}
+    ${kpi('Reject windows',`${rejectSegments.length}x`,minFmt(rejectTotal),'amber')}
+    ${kpi('Quality events',`${qualityEvents.length}x`,'Event & Alarm','amber')}
     ${kpi('Sluice data',x.sluis?'Loaded':'Optional',x.sluis?`${x.sluis.rowsCount} rows`:'not used','blue')}
   </div>
   <div class="card">
-    <div class="sl"><div class="sl-accent" style="background:var(--red)"></div>Quality / reject events</div>
+    <div class="sl"><div class="sl-accent" style="background:var(--red)"></div>Quality / reject timeline</div>
     <table><thead><tr><th>Time</th><th>Duration</th><th>Description</th></tr></thead>
-    <tbody>${x.events.quality.slice(0,24).map(e=>`<tr><td class="mono" style="color:var(--g);font-size:11px">${e.time}</td><td class="mono" style="color:var(--red);font-size:11px">${minFmt(e.dur||0)}</td><td style="color:var(--muted)">${e.desc}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--muted)">No quality events found.</td></tr>'}</tbody>
+    <tbody>${rows||'<tr><td colspan="3" style="color:var(--muted)">No reject windows or quality events found.</td></tr>'}</tbody>
     </table>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">Reject windows come from Sens reject-gate signals. Event rows are matched by quality, reject, reel, RTS, sluice and damage keywords so the cause can be checked next to the actual reject time.</div>
   </div>`;
 }
 
 function optional(x){
+  const detectedOrders=(x.operatorPerf?.orders?.length)||0;
+  const optionalLoaded=['oee','sluis','orders','pasaban'].filter(k=>files[k]).length;
   return`<div class="kpis">
     ${kpi('OEE report',x.oee?'Loaded':'Optional',x.oee?`${x.oee.rowsCount} rows`:'not loaded','blue')}
     ${kpi('Sluice report',x.sluis?'Loaded':'Optional',x.sluis?`${x.sluis.rowsCount} rows`:'not loaded','blue')}
     ${kpi('Orders & tons',x.orders?'Loaded':'Optional',x.orders?`${fmt(x.orders.totalMT,1)} MT`:'not loaded','green')}
+    ${kpi('Orders detected',`${detectedOrders}x`,'Sens/order blocks','green')}
     ${kpi('Pasaban log',x.pasaban?'Loaded':'Optional',x.pasaban?`${x.pasaban.events.length} events`:'not loaded','purple')}
-    ${kpi('Route',x.pasaban||x.oee||x.sluis||x.orders?'Complete':'Basic','auto selected','amber')}
+    ${kpi('Route',optionalLoaded?'Complete':'Basic',`${optionalLoaded}/4 optional files`,'amber')}
   </div>
   <div class="grid2">
     <div class="card">
@@ -899,7 +926,7 @@ function optional(x){
     <div class="card">
       <div class="sl"><div class="sl-accent" style="background:var(--blue)"></div>Optional files</div>
       <table><thead><tr><th>File</th><th>Status</th><th>Info</th></tr></thead><tbody>
-        ${[['OEE',x.oee],['Sluice',x.sluis],['Orders',x.orders],['Pasaban',x.pasaban]].map(([n,d])=>`<tr><td>${n}</td><td><span style="color:${d?'var(--g)':'var(--muted)'};">${d?'OK loaded':'-'}</span></td><td style="color:var(--muted);font-size:11px">${d?(d.rowsCount||d.events?.length||0)+' items':'not loaded'}</td></tr>`).join('')}
+        ${[['OEE',x.oee,x.oee?`${x.oee.rowsCount} rows`:'not loaded'],['Sluice',x.sluis,x.sluis?`${x.sluis.rowsCount} rows`:'not loaded'],['Orders',x.orders,x.orders?`${fmt(x.orders.totalM,0)} m / ${fmt(x.orders.totalMT,1)} MT`:`${detectedOrders} detected from Sens`],['Pasaban',x.pasaban,x.pasaban?`${x.pasaban.events.length} events`:'not loaded']].map(([n,d,info])=>`<tr><td>${n}</td><td><span style="color:${d?'var(--g)':'var(--muted)'};">${d?'OK loaded':'-'}</span></td><td style="color:var(--muted);font-size:11px">${info}</td></tr>`).join('')}
       </tbody></table>
     </div>
   </div>`;
@@ -922,8 +949,9 @@ function makeImprovements(x){
 }
 function improve(items){
   const cc={focus:'var(--red)',warn:'var(--amber)',ok:'var(--g)'};
-  const ic={focus:'^','warn':'!','ok':'OK'};
-  return`<div style="margin-bottom:16px"><div class="syne" style="font-size:20px;letter-spacing:-.03em;margin-bottom:4px">Priority actions</div><div style="color:var(--muted);font-size:13px">Based on the uploaded data files.</div></div>
+  const rank={focus:0,warn:1,ok:2};
+  const ranked=items.slice().sort((a,b)=>(rank[a[0]]??9)-(rank[b[0]]??9));
+  return`<div style="margin-bottom:16px"><div class="syne" style="font-size:20px;letter-spacing:-.03em;margin-bottom:4px">Top improvement priorities</div><div style="color:var(--muted);font-size:13px">Ranked by expected impact from the uploaded data files.</div></div>
   <div class="card live-only" style="display:flex;align-items:center;justify-content:space-between;gap:14px;border-color:rgba(167,139,250,.28);background:rgba(167,139,250,.08)">
     <div>
       <div class="sl" style="margin-bottom:6px"><div class="sl-accent" style="background:var(--purple)"></div>AI suggestions</div>
@@ -933,9 +961,9 @@ function improve(items){
     <button class="btn-glow" id="ai-suggest-btn" onclick="generateAiSuggestions()" type="button" style="white-space:nowrap;background:var(--purple);box-shadow:0 0 20px rgba(167,139,250,.28)">AI suggestions</button>
   </div>
   <div id="ai-suggestion-output" class="live-only"></div>
-  ${items.map(([cls,t,b])=>`<div class="imp" style="background:${cc[cls]}08;border-color:${cc[cls]}25;margin-bottom:10px;backdrop-filter:blur(10px)">
-    <div style="width:30px;height:30px;border-radius:50%;background:${cc[cls]}20;border:1px solid ${cc[cls]}40;display:flex;align-items:center;justify-content:center;font-size:13px;color:${cc[cls]};flex-shrink:0">${ic[cls]}</div>
-    <div><div style="font-size:13px;font-weight:700;margin-bottom:5px">${t}</div><div style="font-size:12px;color:var(--muted);line-height:1.6">${b}</div></div>
+  ${ranked.map(([cls,t,b],i)=>`<div class="imp" style="background:${cc[cls]}08;border-color:${cc[cls]}25;margin-bottom:10px;backdrop-filter:blur(10px)">
+    <div style="width:30px;height:30px;border-radius:50%;background:${cc[cls]}20;border:1px solid ${cc[cls]}40;display:flex;align-items:center;justify-content:center;font-size:13px;color:${cc[cls]};font-weight:800;flex-shrink:0">${i+1}</div>
+    <div><div style="font-size:13px;font-weight:700;margin-bottom:5px">Priority ${i+1}: ${t}</div><div style="font-size:12px;color:var(--muted);line-height:1.6">${b}</div></div>
   </div>`).join('')}`;
 }
 

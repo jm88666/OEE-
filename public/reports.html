@@ -283,7 +283,9 @@ async function buildReportFrameSrcdoc(html) {
       function sendHeight(){parent.postMessage({type:'jm-report-height',height:document.documentElement.scrollHeight},'*');}
       function bindTabs(){document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');const p=document.getElementById('tab-'+t.dataset.tab);if(p)p.classList.add('active');setTimeout(sendHeight,0);});}
       function toggleLossDetails(i){const row=document.getElementById('loss-detail-'+i);if(row){row.classList.toggle('open');setTimeout(sendHeight,0);}}
-      function bindLossButtons(){document.querySelectorAll('.loss-btn').forEach((btn,i)=>{btn.onclick=e=>{e.preventDefault();const match=String(btn.getAttribute('onclick')||'').match(/toggleLossDetails\\((\\d+)\\)/);toggleLossDetails(match?Number(match[1]):i);};});}
+      function toggleLossButton(btn){const explicit=String(btn.getAttribute('onclick')||'').match(/toggleLossDetails\\((\\d+)\\)/);if(explicit)return toggleLossDetails(Number(explicit[1]));const row=btn.closest('tr')?.nextElementSibling;if(row&&row.classList.contains('loss-detail')){row.classList.toggle('open');setTimeout(sendHeight,0);}}
+      function bindLossButtons(){document.querySelectorAll('.loss-btn').forEach((btn,i)=>{btn.onclick=e=>{e.preventDefault();e.stopPropagation();const match=String(btn.getAttribute('onclick')||'').match(/toggleLossDetails\\((\\d+)\\)/);toggleLossDetails(match?Number(match[1]):i);};});}
+      document.addEventListener('click',e=>{const btn=e.target.closest('.loss-btn');if(!btn)return;e.preventDefault();toggleLossButton(btn);});
       ensureTabs();
       bindTabs();
       bindLossButtons();
