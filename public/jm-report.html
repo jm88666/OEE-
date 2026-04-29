@@ -186,6 +186,14 @@ tr:last-child td{border-bottom:none}
 /* IMPROVEMENT */
 .imp{display:flex;gap:12px;padding:14px 16px;border-radius:0 12px 12px 0;margin-bottom:10px;border-left:3px solid}
 .imp-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.loss-btn{border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.1);color:var(--amber);border-radius:7px;padding:4px 8px;font:700 11px 'Space Grotesk',sans-serif;cursor:pointer}
+.loss-detail{display:none;background:rgba(255,255,255,.025)}
+.loss-detail.open{display:table-row}
+.loss-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:8px 0 10px}
+@media(max-width:900px){.loss-grid{grid-template-columns:repeat(2,1fr)}}
+.loss-box{border:1px solid var(--border);background:var(--glass);border-radius:10px;padding:10px 12px}
+.loss-label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin-bottom:5px}
+.loss-value{font:700 15px 'Space Mono',monospace}
 
 /* SAVE MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center}
@@ -424,9 +432,10 @@ async function parseSpeed(file){
   const iTime=findCol(headers,'time','timestamp','date');const iSp=findCol(headers,'linespeed','line speed','speed');const iMax=findCol(headers,'maxspeed','max speed');
   const iRun=findCol(headers,'runstatus','run status','running');const iStop=findCol(headers,'stopbit','stop bit');
   const iRg=findCol(headers,'rejectgate','reject gate','sluis');const iRejectDown=findCol(headers,'rejectdowntime','reject downtime','reject down');const iFc=findCol(headers,'formatchg','format');
+  const iSplice=findCol(headers,'cutreelsignal','cut reel','splice','reel splice');
   const iLen=findCol(headers,'length','lenght','len','vell');
   function pN(s){return parseFloat((s||'').toString().replace(',','.'))||0;}
-  const data=rows.slice(1).map((r,idx)=>({idx,time:iTime>=0?toAnyDate(r[iTime]):null,spd:iSp>=0?pN(r[iSp]):0,max:iMax>=0?pN(r[iMax]):0,run:iRun>=0?pN(r[iRun]):null,stop:iStop>=0?pN(r[iStop]):null,rejectOpen:iRg>=0?pN(r[iRg]):0,reject:iRejectDown>=0?pN(r[iRejectDown]):(iRg>=0?pN(r[iRg]):0),format:iFc>=0?pN(r[iFc]):0,len:iLen>=0?pN(r[iLen]):0}));
+  const data=rows.slice(1).map((r,idx)=>({idx,time:iTime>=0?toAnyDate(r[iTime]):null,spd:iSp>=0?pN(r[iSp]):0,max:iMax>=0?pN(r[iMax]):0,run:iRun>=0?pN(r[iRun]):null,stop:iStop>=0?pN(r[iStop]):null,rejectOpen:iRg>=0?pN(r[iRg]):0,reject:iRejectDown>=0?pN(r[iRejectDown]):(iRg>=0?pN(r[iRg]):0),format:iFc>=0?pN(r[iFc]):0,splice:iSplice>=0?pN(r[iSplice]):0,len:iLen>=0?pN(r[iLen]):0}));
   const runValues=data.map(r=>r.run).filter(v=>v!=null);const stopValues=data.map(r=>r.stop).filter(v=>v!=null);
   const runHasSignal=runValues.some(v=>v>0)&&runValues.some(v=>v<=0);const stopHasSignal=stopValues.some(v=>v>0)&&stopValues.some(v=>v<=0);
   data.forEach(r=>{r.down=runHasSignal?r.run<=0:stopHasSignal?r.stop>0:r.spd<=0;});
@@ -484,6 +493,35 @@ function timeRange(a,b){return `${hhmm(a)} - ${hhmm(b)}`;}
 function ratingForPerf(p){return p>=95?'Excellent':p>=85?'Good':p>=70?'Below target':p>=55?'Low':'Very low';}
 function ratingClass(p){return p>=85?'g':p>=70?'amber':'red';}
 function ratingForSwitch(min){return min<=2?'Fast':min<=3?'Normal':'Slow';}
+function orderLossBreakdown(rows,machineMax,interval,first100){
+  const allowanceMin=1.5;const dipThreshold=machineMax*.85;const spliceWindows=[];let cur=null;
+  rows.forEach((r,i)=>{
+    const afterRamp=first100>=0&&i>first100;const candidate=afterRamp&&r.reject<=0&&r.spd>0&&(r.splice>0||r.spd<dipThreshold);
+    if(candidate&&!cur)cur={start:i,rows:[]};if(candidate)cur.rows.push({...r,localIndex:i});
+    if(!candidate&&cur){spliceWindows.push(cur);cur=null;}
+  });if(cur)spliceWindows.push(cur);
+  const spliceMap=new Map();
+  spliceWindows.filter(w=>w.rows.length>=2||w.rows.some(r=>r.splice>0)).forEach(w=>{
+    w.rows.forEach((r,pos)=>spliceMap.set(r.localIndex,{normal:pos*interval<allowanceMin,window:w}));
+  });
+  const out={gross:0,startup:0,rejectTime:0,rejectGap:0,spliceNormal:0,spliceExcess:0,unexplained:0,spliceWindows:[]};
+  rows.forEach((r,i)=>{
+    const gap=machineMax>0?Math.max(0,(machineMax-r.spd)*interval/machineMax):0;out.gross+=gap;
+    if(first100>=0&&i<first100){out.startup+=gap;return;}
+    if(r.reject>0){out.rejectTime+=interval;out.rejectGap+=gap;return;}
+    const splice=spliceMap.get(i);if(splice){if(splice.normal)out.spliceNormal+=gap;else out.spliceExcess+=gap;return;}
+    out.unexplained+=gap;
+  });
+  out.spliceWindows=spliceWindows.filter(w=>w.rows.length>=2||w.rows.some(r=>r.splice>0)).map(w=>{
+    const duration=w.rows.length*interval;const avg=w.rows.reduce((a,r)=>a+r.spd,0)/w.rows.length;
+    const gap=w.rows.reduce((a,r)=>a+(machineMax>0?Math.max(0,(machineMax-r.spd)*interval/machineMax):0),0);
+    const normalRows=Math.min(w.rows.length,Math.ceil(allowanceMin/interval));
+    const normal=w.rows.slice(0,normalRows).reduce((a,r)=>a+(machineMax>0?Math.max(0,(machineMax-r.spd)*interval/machineMax):0),0);
+    return{from:w.rows[0].time,to:w.rows.at(-1).time,duration,avg,gap,normal,excess:Math.max(0,gap-normal)};
+  });
+  out.actionable=Math.max(0,out.spliceExcess+out.unexplained);
+  return out;
+}
 function detectOrderSegments(speed,bounds){
   const rows=speed.rows||[];const interval=speed.interval||.25;const segments=[];let cur=null,prevLen=null;
   const close=idx=>{if(cur){cur.endIdx=idx;segments.push(cur);cur=null;}};
@@ -504,7 +542,7 @@ function detectOrderSegments(speed,bounds){
     const first100=s.rows.findIndex(r=>target100>0&&r.spd>=target100);const firstOp=s.rows.findIndex(r=>targetOp>0&&r.spd>=targetOp);
     const start=addMinutes(bounds.s,s.startIdx*interval);const end=addMinutes(bounds.s,(s.endIdx+1)*interval);
     const perf=machineMax?avg/machineMax*100:0;const from=s.startLen||'Start';const to=s.endLen||'-';
-    return{start,end,change:`${from} -> ${to}`,len:s.endLen,machineMax,operatorMax,hit100:operatorMax>=target100,timeTo100:first100>=0?first100*interval:null,timeToOperator:firstOp>=0?firstOp*interval:null,duration,potential,lost,avg,perf,rows:s.rows};
+    return{start,end,change:`${from} -> ${to}`,len:s.endLen,machineMax,operatorMax,hit100:operatorMax>=target100,timeTo100:first100>=0?first100*interval:null,timeToOperator:firstOp>=0?firstOp*interval:null,duration,potential,lost,breakdown:orderLossBreakdown(s.rows,machineMax,interval,first100),avg,perf,rows:s.rows};
   });
 }
 function analyzeOrderPerformance(x){
@@ -516,6 +554,25 @@ function analyzeOrderPerformance(x){
   const switches=x.pasaban?.formats?.length?x.pasaban.formats.map(f=>({time:timeRange(f.start,f.end),dur:f.dur,rating:ratingForSwitch(f.dur)})):orders.slice(1).map(o=>({time:hhmm(o.start),dur:o.timeToOperator??0,rating:ratingForSwitch(o.timeToOperator??0)}));
   const totalLost=orders.reduce((s,o)=>s+o.lost,0);const hitCount=orders.filter(o=>o.hit100).length;
   return{orders,byLength,switches,totalLost,hitCount};
+}
+
+function lossDetailRow(o,i){
+  const b=o.breakdown||{};const dips=(b.spliceWindows||[]).slice(0,5).map(w=>`<tr><td class="mono">${timeRange(w.from,w.to)}</td><td class="mono">${minFmt(w.duration)}</td><td class="mono">${fmt(w.avg,0)} m/min</td><td class="mono">${minFmt(w.excess)}</td></tr>`).join('');
+  return`<tr id="loss-detail-${i}" class="loss-detail"><td colspan="10">
+    <div style="padding:10px 4px 14px">
+      <div style="font-size:13px;font-weight:800;margin-bottom:4px">Max-speed gap breakdown</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px">The gross gap assumes the full order could run at ${fmt(o.machineMax,0)} m/min. Normal splice deceleration and acceleration are shown separately and are not treated as a fault.</div>
+      <div class="loss-grid">
+        <div class="loss-box"><div class="loss-label">Gross gap</div><div class="loss-value amber">${minFmt(b.gross||o.lost)}</div></div>
+        <div class="loss-box"><div class="loss-label">Startup ramp</div><div class="loss-value blue">${minFmt(b.startup||0)}</div></div>
+        <div class="loss-box"><div class="loss-label">Reject time</div><div class="loss-value red">${minFmt(b.rejectTime||0)}</div></div>
+        <div class="loss-box"><div class="loss-label">Normal splice excluded</div><div class="loss-value green">${minFmt(b.spliceNormal||0)}</div></div>
+        <div class="loss-box"><div class="loss-label">Actionable gap</div><div class="loss-value ${b.actionable>1?'red':'green'}">${minFmt(b.actionable||0)}</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:8px">Actionable gap is only splice delay beyond the normal allowance plus unexplained speed loss. This is the part we should investigate, not the full gross gap.</div>
+      <table><thead><tr><th>Dip / splice window</th><th>Duration</th><th>Avg speed</th><th>Excess gap</th></tr></thead><tbody>${dips||'<tr><td colspan="4" style="color:var(--muted)">No splice-like speed dips detected after startup.</td></tr>'}</tbody></table>
+    </div>
+  </td></tr>`;
 }
 
 function routeStatus(){
@@ -707,7 +764,7 @@ function operator(x){
     :[{label:'W1',dur:8.2},{label:'W2',dur:11.4},{label:'W3',dur:7.1}];
   const maxDur=Math.max(12,...fmtDurs.map(f=>f.dur));
   const norm=5;
-  const orderRows=perf.orders.slice(0,30).map(o=>`<tr>
+  const orderRows=perf.orders.slice(0,30).map((o,i)=>`<tr>
     <td class="mono" style="color:var(--g);font-size:11px">${hhmm(o.start)}</td>
     <td>${o.change}</td>
     <td class="mono">${fmt(o.machineMax,0)} m/min</td>
@@ -717,8 +774,8 @@ function operator(x){
     <td class="mono">${o.timeToOperator==null?'-':minFmt(o.timeToOperator)}</td>
     <td class="mono">${minFmt(o.duration)}</td>
     <td class="mono">${minFmt(o.potential)}</td>
-    <td class="mono" style="color:${o.lost>5?'var(--red)':o.lost>2?'var(--amber)':'var(--g)'};font-weight:700">${minFmt(o.lost)}</td>
-  </tr>`).join('');
+    <td><button class="loss-btn" onclick="toggleLossDetails(${i})" type="button">${minFmt(o.lost)}</button></td>
+  </tr>${lossDetailRow(o,i)}`).join('');
   const lengthRows=perf.byLength.map(l=>`<tr>
     <td class="mono">${fmt(l.len,0)}</td>
     <td class="mono">${fmt(l.max,0)} m/min</td>
@@ -736,7 +793,7 @@ function operator(x){
     ${kpi('Format changes',`${Math.max(x.formatCount,perf.orders.length)}x`,avgFormat?`avg. ${fmt(avgFormat,1)} min`:'Sens/Pasaban','blue')}
     ${kpi('Max speed reached',`${perf.hitCount} / ${perf.orders.length}`,'orders at >=95% machine max','green')}
     ${kpi('Below max speed',`${Math.max(0,perf.orders.length-perf.hitCount)} / ${perf.orders.length}`,'orders below machine max','red')}
-    ${kpi('Time lost',minFmt(perf.totalLost),'theoretical at machine max','red')}
+    ${kpi('Max-speed gap',minFmt(perf.totalLost),'gross theoretical gap','red')}
   </div>
   <div class="grid2">
     <div class="card">
@@ -758,10 +815,10 @@ function operator(x){
   <div class="card">
     <div class="sl"><div class="sl-accent" style="background:var(--amber)"></div>Format change - speed ramp-up and order duration</div>
     <div style="overflow-x:auto">
-      <table style="min-width:980px"><thead><tr><th>Time</th><th>Change</th><th>Machine max</th><th>Operator max</th><th>Hit 100%?</th><th>Time to 100%</th><th>Time to operator max</th><th>Actual duration</th><th>Potential duration</th><th>Time lost</th></tr></thead>
+      <table style="min-width:980px"><thead><tr><th>Time</th><th>Change</th><th>Machine max</th><th>Operator max</th><th>Hit 100%?</th><th>Time to 100%</th><th>Time to operator max</th><th>Actual duration</th><th>Theoretical max</th><th>Max-speed gap</th></tr></thead>
       <tbody>${orderRows||'<tr><td colspan="10" style="color:var(--muted)">No format/order blocks found in Sens data.</td></tr>'}</tbody></table>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:10px">Potential duration uses the same produced meters, calculated at the machine max speed for that format. Hit 100% means the operator reached at least 95% of the machine max.</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">Theoretical max uses the same produced meters, calculated at the machine max speed for that format. Click Max-speed gap to separate startup, reject and normal splice dips from actionable loss.</div>
   </div>
   <div class="grid2">
     <div class="card">
@@ -845,7 +902,7 @@ function optional(x){
 function makeImprovements(x){
   const arr=[];
   const perf=x.operatorPerf||analyzeOrderPerformance(x);
-  if(perf.totalLost>10)arr.push(['focus','Production time lost below machine max',`${minFmt(perf.totalLost)} theoretical time loss across ${perf.orders.length} detected format/order blocks.`]);
+  if(perf.totalLost>10)arr.push(['focus','Max-speed gap to review',`${minFmt(perf.totalLost)} gross theoretical gap across ${perf.orders.length} detected format/order blocks. Open the operator table to separate startup, reject and splice allowance.`]);
   if(perf.orders.length&&perf.hitCount/perf.orders.length<.5)arr.push(['focus','Most orders do not reach machine max',`${perf.orders.length-perf.hitCount} of ${perf.orders.length} order blocks stayed below 95% of machine max speed.`]);
   const weak=perf.byLength.filter(x=>x.avg<70).sort((a,b)=>a.avg-b.avg).slice(0,3);
   if(weak.length)arr.push(['warn','Low performance on specific formats',`Lowest format lengths: ${weak.map(x=>`${fmt(x.len,0)}mm at ${pctFmt(x.avg)}`).join(', ')}.`]);
@@ -895,7 +952,7 @@ Reject time: ${minFmt(x.rejectMin||0)}
 Downtime: ${minFmt(x.stopMin||0)}
 Detected order blocks: ${perf.orders.length}
 Orders reaching >=95% machine max: ${perf.hitCount}/${perf.orders.length}
-Theoretical time lost below machine max: ${minFmt(perf.totalLost||0)}
+Gross max-speed gap below machine max: ${minFmt(perf.totalLost||0)}
 Pasaban resets: ${x.pasaban?.resets||0}
 
 Calculated priority actions:
@@ -958,6 +1015,10 @@ function bindTabs(){
     t.classList.add('active');
     $('tab-'+t.dataset.tab).classList.add('active');
   });
+}
+function toggleLossDetails(i){
+  const row=$('loss-detail-'+i);
+  if(row)row.classList.toggle('open');
 }
 
 async function buildReport(){
