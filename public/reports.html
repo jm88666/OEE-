@@ -136,6 +136,12 @@ const viewer = document.getElementById('viewer');
 let current = null;
 let reportCssCache = null;
 
+window.addEventListener('message', event => {
+  if (event.data?.type !== 'jm-report-height') return;
+  const frame = document.getElementById('report-frame');
+  if (frame) frame.style.height = Math.max(760, Number(event.data.height || 0) + 24) + 'px';
+});
+
 function setTheme(theme) {
   const next = theme === 'glass' ? 'glass' : 'dark';
   document.documentElement.dataset.theme = next;
@@ -240,6 +246,7 @@ async function openReport(id, updateUrl = true) {
     try {
       const h = frame.contentDocument.documentElement.scrollHeight;
       frame.style.height = Math.max(760, h + 24) + 'px';
+      frame.contentWindow?.postMessage({ type: 'jm-parent-ready' }, '*');
     } catch (_) {}
   };
 }
@@ -273,10 +280,15 @@ async function buildReportFrameSrcdoc(html) {
         panels[0].parentNode.insertBefore(tabs,panels[0]);
         if(!panels.some(p=>p.classList.contains('active')))panels[0].classList.add('active');
       }
-      function bindTabs(){document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');const p=document.getElementById('tab-'+t.dataset.tab);if(p)p.classList.add('active');});}
-      function toggleLossDetails(i){const row=document.getElementById('loss-detail-'+i);if(row)row.classList.toggle('open');}
+      function sendHeight(){parent.postMessage({type:'jm-report-height',height:document.documentElement.scrollHeight},'*');}
+      function bindTabs(){document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');const p=document.getElementById('tab-'+t.dataset.tab);if(p)p.classList.add('active');setTimeout(sendHeight,0);});}
+      function toggleLossDetails(i){const row=document.getElementById('loss-detail-'+i);if(row){row.classList.toggle('open');setTimeout(sendHeight,0);}}
+      function bindLossButtons(){document.querySelectorAll('.loss-btn').forEach((btn,i)=>{btn.onclick=e=>{e.preventDefault();const match=String(btn.getAttribute('onclick')||'').match(/toggleLossDetails\\((\\d+)\\)/);toggleLossDetails(match?Number(match[1]):i);};});}
       ensureTabs();
       bindTabs();
+      bindLossButtons();
+      new ResizeObserver(sendHeight).observe(document.body);
+      setTimeout(sendHeight,0);
     <\/script></body></html>`;
 }
 
