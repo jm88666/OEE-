@@ -75,6 +75,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .viewer-placeholder{height:320px;background:rgba(255,255,255,.02);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
 .viewer-empty{color:var(--muted);font-size:13px;text-align:center;padding:60px 20px}
 .saved-report-body{background:rgba(255,255,255,.02);border-radius:10px;overflow:auto;min-height:280px;padding:14px}
+.report-frame{width:100%;min-height:760px;border:0;border-radius:12px;background:#11151f}
 .saved-report-body .panel{display:none}
 .saved-report-body .panel.active{display:block}
 .saved-report-body .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
@@ -133,6 +134,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 const list = document.getElementById('list');
 const viewer = document.getElementById('viewer');
 let current = null;
+let reportCssCache = null;
 
 function setTheme(theme) {
   const next = theme === 'glass' ? 'glass' : 'dark';
@@ -218,6 +220,7 @@ async function openReport(id, updateUrl = true) {
   current = data.report;
   if (updateUrl) history.replaceState(null, '', `/my-reports?id=${encodeURIComponent(id)}`);
   const safeHtml = cleanSavedReportHtml(current.html);
+  const srcdoc = await buildReportFrameSrcdoc(safeHtml);
   viewer.innerHTML = `
     <div class="viewer-header">
       <div>
@@ -225,13 +228,56 @@ async function openReport(id, updateUrl = true) {
         <div class="viewer-sub">${esc(current.email)} - ${new Date(current.createdAt).toLocaleString('en-GB')}</div>
       </div>
       <div class="viewer-actions">
-        <button class="nav-btn" onclick="window.location.href='/my-reports?id=${encodeURIComponent(current.id)}'">Open report</button>
+        <button class="nav-btn" onclick="document.getElementById('report-frame')?.requestFullscreen?.()">Fullscreen</button>
         <button onclick="deleteCurrent()" style="background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.3);border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700">Delete</button>
       </div>
     </div>
-    <div class="saved-report-body">${safeHtml}</div>
+    <iframe id="report-frame" class="report-frame" title="${esc(current.title)}"></iframe>
   `;
-  bindSavedReportTabs();
+  const frame = document.getElementById('report-frame');
+  frame.srcdoc = srcdoc;
+  frame.onload = () => {
+    try {
+      const h = frame.contentDocument.documentElement.scrollHeight;
+      frame.style.height = Math.max(760, h + 24) + 'px';
+    } catch (_) {}
+  };
+}
+
+async function getReportCss() {
+  if (reportCssCache) return reportCssCache;
+  const res = await fetch('/jm-report');
+  const html = await res.text();
+  const match = html.match(/<style>([\s\S]*?)<\/style>/i);
+  reportCssCache = match ? match[1] : '';
+  return reportCssCache;
+}
+
+async function buildReportFrameSrcdoc(html) {
+  const css = await getReportCss();
+  return `<!DOCTYPE html><html lang="en" data-theme="${document.documentElement.dataset.theme || 'glass'}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>${css}
+      body{padding:24px 28px;background:radial-gradient(circle at 14% 0%,var(--mesh-a),transparent 34%),radial-gradient(circle at 86% 12%,var(--mesh-b),transparent 32%),linear-gradient(180deg,var(--bg),var(--bg2));}
+      .wrap{padding:0;max-width:none}.panel{display:none}.panel.active{display:block}.tabs{display:flex}
+    </style></head><body><div class="wrap">${html}</div>
+    <script>
+      function ensureTabs(){
+        if(document.querySelector('.tabs'))return;
+        const panels=[...document.querySelectorAll('.panel[id^="tab-"]')];
+        if(!panels.length)return;
+        const labels={overview:'Overview',operator:'Operator',machine:'Machine',quality:'Quality / Reject',optional:'Optional data',improve:'Improvements'};
+        const tabs=document.createElement('div');tabs.className='tabs';tabs.style.display='flex';
+        panels.forEach((panel,i)=>{const key=panel.id.replace(/^tab-/,'');const btn=document.createElement('button');btn.className='tab'+(panel.classList.contains('active')||(!i&&!panels.some(p=>p.classList.contains('active'))) ? ' active':'');btn.dataset.tab=key;btn.textContent=labels[key]||key;tabs.appendChild(btn);});
+        panels[0].parentNode.insertBefore(tabs,panels[0]);
+        if(!panels.some(p=>p.classList.contains('active')))panels[0].classList.add('active');
+      }
+      function bindTabs(){document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');const p=document.getElementById('tab-'+t.dataset.tab);if(p)p.classList.add('active');});}
+      function toggleLossDetails(i){const row=document.getElementById('loss-detail-'+i);if(row)row.classList.toggle('open');}
+      ensureTabs();
+      bindTabs();
+    <\/script></body></html>`;
 }
 
 function cleanSavedReportHtml(html) {
