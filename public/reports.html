@@ -64,6 +64,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .report-title{font-size:13px;font-weight:700;margin-bottom:6px;line-height:1.4}
 .report-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:5px;font-size:11px;color:var(--muted)}
 .report-date{font-size:11px;color:var(--muted)}
+.report-actions{display:flex;gap:7px;margin-top:10px}
 .badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.03em}
 
 /* VIEWER */
@@ -79,6 +80,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .saved-report-body .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
 .saved-report-body .tab{border:1px solid var(--border);background:var(--glass);color:var(--muted);border-radius:8px;padding:7px 12px;font:700 12px 'Space Grotesk',sans-serif;cursor:pointer}
 .saved-report-body .tab.active{border-color:rgba(0,229,160,.5);background:rgba(0,229,160,.1);color:var(--g)}
+.viewer-actions{display:flex;gap:8px;flex-wrap:wrap}
 
 .muted{color:var(--muted)}
 </style>
@@ -114,7 +116,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   <div class="page-header">
     <div>
       <div class="syne page-title">My reports</div>
-      <div class="page-sub" id="sub">Loading…</div>
+      <div class="page-sub" id="sub">Loading...</div>
     </div>
     <button class="btn-glow" onclick="window.location.href='/report'">+ New report</button>
   </div>
@@ -158,7 +160,7 @@ function badgeHtml(text, color) {
 async function loadReports() {
   const res = await fetch('/api/reports');
   const data = await res.json();
-  document.getElementById('sub').textContent = `Retention: ${data.retentionDays} days · ${data.reports.length} reports`;
+  document.getElementById('sub').textContent = `Retention: ${data.retentionDays} days - ${data.reports.length} reports`;
 
   if (!data.reports.length) {
     list.innerHTML = `<div class="report-item" style="cursor:default;opacity:.6">No reports saved yet.</div>`;
@@ -170,37 +172,62 @@ async function loadReports() {
       <div class="report-title">${esc(r.title)}</div>
       <div class="report-meta">
         <span>${esc(r.machine || '-')}</span>
-        <span style="color:var(--dim)">·</span>
+        <span style="color:var(--dim)">-</span>
         <span>${esc(r.shift || '-')}</span>
         ${r.route ? badgeHtml(r.route, r.route === 'Complete' ? '#60a5fa' : '#4a5070') : ''}
       </div>
-      <div class="report-date">${new Date(r.createdAt).toLocaleString('en-GB')} · expires ${new Date(r.expiresAt).toLocaleDateString('en-GB')}</div>
+      <div class="report-date">${new Date(r.createdAt).toLocaleString('en-GB')} - expires ${new Date(r.expiresAt).toLocaleDateString('en-GB')}</div>
+      <div class="report-actions">
+        <button class="nav-btn" type="button" data-open-id="${r.id}">Open report</button>
+      </div>
     </article>
   `).join('');
 
   list.querySelectorAll('.report-item').forEach(item => {
-    item.onclick = () => {
+    item.onclick = event => {
+      if (event.target.closest('[data-open-id]')) return;
       list.querySelectorAll('.report-item').forEach(i => i.classList.remove('selected'));
       item.classList.add('selected');
       openReport(item.dataset.id);
     };
   });
+  list.querySelectorAll('[data-open-id]').forEach(button => {
+    button.onclick = event => {
+      event.stopPropagation();
+      const id = button.dataset.openId;
+      const item = list.querySelector(`[data-id="${CSS.escape(id)}"]`);
+      list.querySelectorAll('.report-item').forEach(i => i.classList.remove('selected'));
+      if (item) item.classList.add('selected');
+      openReport(id, true);
+    };
+  });
+
+  const initialId = new URLSearchParams(window.location.search).get('id');
+  if (initialId && data.reports.some(r => r.id === initialId)) {
+    const item = list.querySelector(`[data-id="${CSS.escape(initialId)}"]`);
+    if (item) item.classList.add('selected');
+    openReport(initialId, false);
+  }
 }
 
-async function openReport(id) {
-  viewer.innerHTML = `<div class="viewer-empty">Loading…</div>`;
+async function openReport(id, updateUrl = true) {
+  viewer.innerHTML = `<div class="viewer-empty">Loading...</div>`;
   const res = await fetch('/api/reports/' + encodeURIComponent(id));
   const data = await res.json();
   if (!res.ok) { viewer.innerHTML = `<div class="viewer-empty" style="color:var(--red)">${esc(data.error || 'Failed to open report.')}</div>`; return; }
   current = data.report;
+  if (updateUrl) history.replaceState(null, '', `/my-reports?id=${encodeURIComponent(id)}`);
   const safeHtml = cleanSavedReportHtml(current.html);
   viewer.innerHTML = `
     <div class="viewer-header">
       <div>
         <div class="viewer-title">${esc(current.title)}</div>
-        <div class="viewer-sub">${esc(current.email)} · ${new Date(current.createdAt).toLocaleString('en-GB')}</div>
+        <div class="viewer-sub">${esc(current.email)} - ${new Date(current.createdAt).toLocaleString('en-GB')}</div>
       </div>
-      <button onclick="deleteCurrent()" style="background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.3);border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700">Delete</button>
+      <div class="viewer-actions">
+        <button class="nav-btn" onclick="window.location.href='/my-reports?id=${encodeURIComponent(current.id)}'">Open report</button>
+        <button onclick="deleteCurrent()" style="background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.3);border-radius:8px;padding:7px 13px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700">Delete</button>
+      </div>
     </div>
     <div class="saved-report-body">${safeHtml}</div>
   `;
