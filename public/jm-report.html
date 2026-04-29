@@ -493,6 +493,11 @@ function timeRange(a,b){return `${hhmm(a)} - ${hhmm(b)}`;}
 function ratingForPerf(p){return p>=95?'Excellent':p>=85?'Good':p>=70?'Below target':p>=55?'Low':'Very low';}
 function ratingClass(p){return p>=85?'g':p>=70?'amber':'red';}
 function ratingForSwitch(min){return min<=2?'Fast':min<=3?'Normal':'Slow';}
+function modalSpeed(rows){
+  const counts={};rows.filter(r=>r.spd>0).forEach(r=>{const k=String(Math.round(r.spd/10)*10);counts[k]=(counts[k]||0)+1;});
+  const best=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  return best?Number(best[0]):0;
+}
 function orderLossBreakdown(rows,machineMax,interval,first100){
   const allowanceMin=1.5;const dipThreshold=machineMax*.85;const spliceWindows=[];let cur=null;
   rows.forEach((r,i)=>{
@@ -514,10 +519,11 @@ function orderLossBreakdown(rows,machineMax,interval,first100){
   });
   out.spliceWindows=spliceWindows.filter(w=>w.rows.length>=2||w.rows.some(r=>r.splice>0)).map(w=>{
     const duration=w.rows.length*interval;const avg=w.rows.reduce((a,r)=>a+r.spd,0)/w.rows.length;
+    const floorRows=w.rows.filter(r=>r.spd>0&&r.spd<dipThreshold);const spliceSpeed=modalSpeed(floorRows.length?floorRows:w.rows);
     const gap=w.rows.reduce((a,r)=>a+(machineMax>0?Math.max(0,(machineMax-r.spd)*interval/machineMax):0),0);
     const normalRows=Math.min(w.rows.length,Math.ceil(allowanceMin/interval));
     const normal=w.rows.slice(0,normalRows).reduce((a,r)=>a+(machineMax>0?Math.max(0,(machineMax-r.spd)*interval/machineMax):0),0);
-    return{from:w.rows[0].time,to:w.rows.at(-1).time,duration,avg,gap,normal,excess:Math.max(0,gap-normal)};
+    return{from:w.rows[0].time,to:w.rows.at(-1).time,duration,avg,spliceSpeed,gap,normal,excess:Math.max(0,gap-normal)};
   });
   out.actionable=Math.max(0,out.spliceExcess+out.unexplained);
   return out;
@@ -557,7 +563,7 @@ function analyzeOrderPerformance(x){
 }
 
 function lossDetailRow(o,i){
-  const b=o.breakdown||{};const dips=(b.spliceWindows||[]).slice(0,5).map(w=>`<tr><td class="mono">${timeRange(w.from,w.to)}</td><td class="mono">${minFmt(w.duration)}</td><td class="mono">${fmt(w.avg,0)} m/min</td><td class="mono">${minFmt(w.excess)}</td></tr>`).join('');
+  const b=o.breakdown||{};const dips=(b.spliceWindows||[]).slice(0,5).map(w=>`<tr><td class="mono">${timeRange(w.from,w.to)}</td><td class="mono">${minFmt(w.duration)}</td><td class="mono">${fmt(w.spliceSpeed,0)} m/min</td><td class="mono">${fmt(w.avg,0)} m/min</td><td class="mono">${minFmt(w.excess)}</td></tr>`).join('');
   return`<tr id="loss-detail-${i}" class="loss-detail"><td colspan="10">
     <div style="padding:10px 4px 14px">
       <div style="font-size:13px;font-weight:800;margin-bottom:4px">Max-speed gap breakdown</div>
@@ -569,8 +575,8 @@ function lossDetailRow(o,i){
         <div class="loss-box"><div class="loss-label">Normal splice excluded</div><div class="loss-value green">${minFmt(b.spliceNormal||0)}</div></div>
         <div class="loss-box"><div class="loss-label">Actionable gap</div><div class="loss-value ${b.actionable>1?'red':'green'}">${minFmt(b.actionable||0)}</div></div>
       </div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:8px">Actionable gap is only splice delay beyond the normal allowance plus unexplained speed loss. This is the part we should investigate, not the full gross gap.</div>
-      <table><thead><tr><th>Dip / splice window</th><th>Duration</th><th>Avg speed</th><th>Excess gap</th></tr></thead><tbody>${dips||'<tr><td colspan="4" style="color:var(--muted)">No splice-like speed dips detected after startup.</td></tr>'}</tbody></table>
+      <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:8px">Duration is the full slow-speed window: deceleration, splice/low-speed plateau and acceleration back up. Splice speed is the most common low speed inside that window. Excess gap is only the part beyond the normal splice allowance.</div>
+      <table><thead><tr><th>Dip / splice window</th><th>Duration</th><th>Splice speed</th><th>Avg speed</th><th>Excess gap</th></tr></thead><tbody>${dips||'<tr><td colspan="5" style="color:var(--muted)">No splice-like speed dips detected after startup.</td></tr>'}</tbody></table>
     </div>
   </td></tr>`;
 }
