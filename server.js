@@ -439,6 +439,92 @@ app.get('/api/auth-check', (req, res) => {
   res.json({ ok: validPass, configured: authSecrets.length > 0 });
 });
 
+// ─── Google OAuth ─────────────────────────────────────────────────────────
+const googlePending = new Map(); // one-time codes → { token, user, exp }
+
+function googleRedirectUri(req) {
+  return process.env.GOOGLE_REDIRECT_URI ||
+    `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+}
+
+app.get('/api/auth/google', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.redirect('/?google_error=not_configured');
+  }
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: googleRedirectUri(req),
+    response_type: 'code',
+    scope: 'openid email profile',
+    state: crypto.randomBytes(16).toString('hex'),
+    prompt: 'select_account',
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+app.get('/api/auth/google/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error || !code) return res.redirect('/?google_error=1');
+  try {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: googleRedirectUri(req),
+        grant_type: 'authorization_code',
+      }),
+    });
+    const tokens = await tokenRes.json();
+    if (!tokens.id_token) return res.redirect('/?google_error=1');
+
+    const infoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${tokens.id_token}`);
+    const gUser = await infoRes.json();
+    if (gUser.error || gUser.aud !== process.env.GOOGLE_CLIENT_ID) return res.redirect('/?google_error=1');
+
+    const cleanEmail = String(gUser.email || '').trim().toLowerCase();
+    if (!emailAllowed(cleanEmail)) return res.redirect('/?google_error=blocked');
+
+    const users = readJson('users.json', []);
+    let user = users.find(u => u.email === cleanEmail);
+    if (!user) {
+      const role = users.length === 0 || adminEmails().includes(cleanEmail) ? 'admin' : 'user';
+      user = { id: id('usr'), email: cleanEmail, name: String(gUser.name || cleanEmail).trim(), location: '', role, active: true, createdAt: nowIso(), authProvider: 'google' };
+      users.push(user);
+      writeJson('users.json', users);
+      audit('account_created', user, { role, provider: 'google' });
+    } else if (user.active === false) {
+      return res.redirect('/?google_error=blocked');
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const sessions = readJson('sessions.json', []).filter(s => new Date(s.expiresAt).getTime() > Date.now());
+    sessions.push({ token, userId: user.id, createdAt: nowIso(), expiresAt });
+    writeJson('sessions.json', sessions);
+    audit('login', user, { provider: 'google' });
+
+    const otc = crypto.randomBytes(20).toString('hex');
+    googlePending.set(otc, { token, user: publicUser(user), exp: Date.now() + 60_000 });
+    setTimeout(() => googlePending.delete(otc), 60_000);
+    res.redirect(`/?_auth=${otc}`);
+  } catch (err) {
+    console.error('Google OAuth error:', err.message);
+    res.redirect('/?google_error=1');
+  }
+});
+
+app.get('/api/auth/google/exchange', (req, res) => {
+  const otc = String(req.query.code || '');
+  const pending = googlePending.get(otc);
+  if (!pending || pending.exp < Date.now()) { googlePending.delete(otc); return res.status(400).json({ error: 'Invalid or expired code.' }); }
+  googlePending.delete(otc);
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  res.json({ token: pending.token, user: pending.user, expiresAt });
+});
+
 app.listen(PORT, () => {
   console.log(`JMAnalyzeTool running at http://localhost:${PORT}`);
   console.log(`Data directory: ${DATA_DIR}`);
