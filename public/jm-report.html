@@ -224,6 +224,17 @@ tr:last-child td{border-bottom:none}
     </div>
     <a href="/my-reports" class="nav-btn">My reports</a>
     <a id="admin-link" href="/admin" class="nav-btn" style="display:none">Admin</a>
+    <div id="demo-dd-wrap" style="position:relative">
+      <button id="demo-dd-btn" class="nav-btn" type="button" style="border-color:rgba(0,229,160,.55);color:var(--g)">Demo ▾</button>
+      <div id="demo-dd-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:230px;background:var(--modal-bg);border:1px solid rgba(0,229,160,.25);border-radius:10px;padding:6px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.45)">
+        <button class="demo-scenario" data-scenario="basic" type="button">Basic report<span>Sens + Event/Alarm</span></button>
+        <button class="demo-scenario" data-scenario="pasaban" type="button">+ Pasaban log<span>resets, alarms, start/stop, operator actions</span></button>
+        <button class="demo-scenario" data-scenario="oee" type="button">+ OEE report<span>OEE context and PROMs validation layer</span></button>
+        <button class="demo-scenario" data-scenario="orders" type="button">+ Orders &amp; tons<span>meters, MT, tons/hour and order context</span></button>
+        <button class="demo-scenario" data-scenario="sluis" type="button">+ Sluice report<span>sluice factors and reject-gate detail</span></button>
+        <button class="demo-scenario" data-scenario="complete" type="button">Complete report<span>all data sources combined</span></button>
+      </div>
+    </div>
     <button id="logout-btn" class="nav-btn danger">Log out</button>
   </nav>
   <div style="display:flex;align-items:center;gap:10px">

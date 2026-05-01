@@ -164,6 +164,8 @@
   }
 
   function runScenario(type) {
+    const menu = el('demo-dd-menu');
+    if (menu) menu.style.display = 'none';
     if (el('machine')) el('machine').value = 'Demo Sheeter JM';
     if (el('shift')) el('shift').value = '05:30-13:30';
     if (el('shift-start')) el('shift-start').value = '05:30';
@@ -177,32 +179,30 @@
   }
 
   function insertStyles() {
-    const css = `.demo-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;margin:0 0 16px}.demo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.demo-scenario{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:8px;padding:10px 12px;text-align:left;font-weight:800;cursor:pointer}.demo-scenario span{display:block;color:var(--muted);font-size:11px;font-weight:600;margin-top:3px}.demo-scenario.active{border-color:var(--green);box-shadow:0 0 0 1px rgba(62,207,142,.25) inset}.demo-note{background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.28);border-radius:10px;padding:16px;margin-bottom:16px}.demo-note p{color:var(--muted);margin-top:5px}@media(max-width:960px){.demo-grid{grid-template-columns:1fr}}`;
+    if (document.getElementById('demo-styles')) return;
+    const css = `.demo-scenario{border:1px solid var(--border);background:var(--glass);color:var(--text);border-radius:8px;padding:10px 12px;text-align:left;font-weight:800;cursor:pointer;width:100%;display:block}.demo-scenario span{display:block;color:var(--muted);font-size:11px;font-weight:600;margin-top:3px}.demo-scenario.active{border-color:var(--g);box-shadow:0 0 0 1px rgba(0,229,160,.2) inset}.demo-scenario:hover{background:var(--glass2)}#demo-dd-menu .demo-scenario+.demo-scenario{margin-top:4px}.demo-note{background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.28);border-radius:10px;padding:16px;margin-bottom:16px}.demo-note p{color:var(--muted);margin-top:5px}`;
     const style = document.createElement('style');
+    style.id = 'demo-styles';
     style.textContent = css;
     document.head.appendChild(style);
   }
 
-  function insertPanel() {
-    const upload = document.querySelector('.upload');
-    if (!upload || document.querySelector('.demo-panel')) return;
-    const panel = document.createElement('section');
-    panel.className = 'demo-panel';
-    panel.innerHTML = `<div class="title">Demo reports</div><div class="demo-grid">
-      <button class="demo-scenario" data-scenario="basic">Basic report<span>Sens + Event/Alarm</span></button>
-      <button class="demo-scenario" data-scenario="pasaban">+ Pasaban log<span>resets, alarms, start/stop, operator actions</span></button>
-      <button class="demo-scenario" data-scenario="oee">+ OEE report<span>OEE context and PROMs validation layer</span></button>
-      <button class="demo-scenario" data-scenario="orders">+ Orders & tons<span>meters, MT, tons/hour and order context</span></button>
-      <button class="demo-scenario" data-scenario="sluis">+ Sluice report<span>sluice factors and reject-gate detail</span></button>
-      <button class="demo-scenario" data-scenario="complete">Complete report<span>all data sources combined</span></button>
-    </div>`;
-    upload.parentNode.insertBefore(panel, upload);
-    panel.querySelectorAll('.demo-scenario').forEach(btn => btn.addEventListener('click', () => runScenario(btn.dataset.scenario)));
+  function insertDropdown() {
+    const btn = el('demo-dd-btn');
+    const menu = el('demo-dd-menu');
+    if (!btn || !menu || btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', () => { menu.style.display = 'none'; });
+    menu.querySelectorAll('.demo-scenario').forEach(b => b.addEventListener('click', () => runScenario(b.dataset.scenario)));
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     insertStyles();
-    insertPanel();
+    insertDropdown();
   });
-  setTimeout(() => { insertStyles(); insertPanel(); }, 0);
+  setTimeout(() => { insertStyles(); insertDropdown(); }, 0);
 })();
