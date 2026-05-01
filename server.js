@@ -54,9 +54,14 @@ const splitList = value => String(value || '')
   .filter(Boolean);
 const allowedEmails = () => splitList(process.env.ALLOWED_EMAILS || process.env.ALLOWED_EMAIL || '');
 const emailAllowed = email => {
-  const list = allowedEmails();
+  const list = [...new Set([...allowedEmails(), ...adminEmails()])];
   if (list.length) return list.includes(String(email || '').trim().toLowerCase());
   return process.env.ALLOW_ALL_EMAILS === 'true' && !process.env.RAILWAY_ENVIRONMENT_ID;
+};
+const maskEmail = email => {
+  const [name, domain] = String(email || '').split('@');
+  if (!name || !domain) return '';
+  return `${name.slice(0, 2)}***${name.slice(-2)}@${domain}`;
 };
 
 function ensureDataDir() {
@@ -236,6 +241,17 @@ app.get('/api/auth/me', requireUser, (req, res) => {
   res.json({ user: publicUser(req.user), retentionDays: REPORT_RETENTION_DAYS });
 });
 
+app.get('/api/auth/allowed-check', (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  const list = [...new Set([...allowedEmails(), ...adminEmails()])];
+  res.json({
+    email,
+    allowed: emailAllowed(email),
+    allowedCount: list.length,
+    allowedMasked: list.map(maskEmail),
+  });
+});
+
 app.post('/api/analyze', requireUser, async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || apiKey === 'plak-hier-je-sleutel' || apiKey === 'paste-your-key-here') {
@@ -392,5 +408,5 @@ app.get('/api/auth-check', (req, res) => {
 app.listen(PORT, () => {
   console.log(`JMAnalyzeTool running at http://localhost:${PORT}`);
   console.log(`Data directory: ${DATA_DIR}`);
-  console.log(`Allowed emails configured: ${allowedEmails().length}`);
+  console.log(`Allowed emails configured: ${new Set([...allowedEmails(), ...adminEmails()]).size}`);
 });
