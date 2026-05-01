@@ -8,7 +8,10 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3131;
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const DEFAULT_DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'data')
+  : path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || DEFAULT_DATA_DIR;
 const REPORT_RETENTION_DAYS = parseInt(process.env.REPORT_RETENTION_DAYS || '30', 10);
 const SESSION_DAYS = parseInt(process.env.SESSION_DAYS || '14', 10);
 const AUTH_ENV_NAMES = [
@@ -353,4 +356,7 @@ app.get('/api/auth-check', (req, res) => {
   res.json({ ok: validPass, configured: authSecrets.length > 0 });
 });
 
-app.listen(PORT, () => console.log(`JMAnalyzeTool running at http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`JMAnalyzeTool running at http://localhost:${PORT}`);
+  console.log(`Data directory: ${DATA_DIR}`);
+});
