@@ -78,6 +78,18 @@ function writeJson(name, value) {
   fs.writeFileSync(`${target}.tmp`, JSON.stringify(value, null, 2));
   fs.renameSync(`${target}.tmp`, target);
 }
+function revokeSessionsForUser(userId) {
+  if (!userId) return;
+  const sessions = readJson('sessions.json', []);
+  const kept = sessions.filter(s => s.userId !== userId);
+  if (kept.length !== sessions.length) writeJson('sessions.json', kept);
+}
+function revokeSessionsForEmail(email) {
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  if (!cleanEmail) return;
+  const user = readJson('users.json', []).find(u => u.email === cleanEmail);
+  if (user) revokeSessionsForUser(user.id);
+}
 function nowIso() {
   return new Date().toISOString();
 }
@@ -119,7 +131,11 @@ function sessionUser(req) {
   if (!session) return null;
   const users = readJson('users.json', []);
   const user = users.find(u => u.id === session.userId && u.active !== false) || null;
-  if (!user || !emailAllowed(user.email)) return null;
+  if (!user) return null;
+  if (!emailAllowed(user.email)) {
+    revokeSessionsForUser(user.id);
+    return null;
+  }
   return user;
 }
 function requireUser(req, res, next) {
@@ -193,7 +209,10 @@ app.post('/api/auth/register', (req, res) => {
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body || {};
   const cleanEmail = String(email || '').trim().toLowerCase();
-  if (!emailAllowed(cleanEmail)) return res.status(401).json({ error: 'Email or password is incorrect.' });
+  if (!emailAllowed(cleanEmail)) {
+    revokeSessionsForEmail(cleanEmail);
+    return res.status(401).json({ error: 'Email or password is incorrect.' });
+  }
   const users = readJson('users.json', []);
   const user = users.find(u => u.email === cleanEmail && u.active !== false);
   if (!user || !verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: 'Email or password is incorrect.' });

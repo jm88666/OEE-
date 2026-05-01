@@ -124,6 +124,19 @@ function saveSession(data) {
   window.location.href = '/report';
 }
 
+async function checkExistingSession() {
+  const token = localStorage.getItem(tokenKey);
+  if (!token) return;
+  try {
+    const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error('invalid');
+    window.location.href = '/report';
+  } catch (_) {
+    localStorage.removeItem(tokenKey);
+    localStorage.removeItem(userKey);
+  }
+}
+
 async function login() {
   $('login-msg').textContent = '';
   $('login-btn').disabled = true;
@@ -153,7 +166,7 @@ $('login-btn').onclick = login;
 $('register-btn').onclick = register;
 $('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 $('reg-code').addEventListener('keydown', e => { if (e.key === 'Enter') register(); });
-if (localStorage.getItem(tokenKey)) window.location.href = '/report';
+checkExistingSession();
 </script>
 </body>
 </html>
