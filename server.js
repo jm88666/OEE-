@@ -116,7 +116,9 @@ function sessionUser(req) {
   const session = sessions.find(s => s.token === token && new Date(s.expiresAt).getTime() > Date.now());
   if (!session) return null;
   const users = readJson('users.json', []);
-  return users.find(u => u.id === session.userId && u.active !== false) || null;
+  const user = users.find(u => u.id === session.userId && u.active !== false) || null;
+  if (!user || !emailAllowed(user.email)) return null;
+  return user;
 }
 function requireUser(req, res, next) {
   const user = sessionUser(req);
