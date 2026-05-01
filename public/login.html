@@ -82,6 +82,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         <div class="field"><label for="login-pass">Password</label><input id="login-pass" type="password" autocomplete="current-password" placeholder="Password"></div>
         <div id="login-msg" class="msg err"></div>
         <button class="btn-primary" id="login-btn">Log in</button>
+        <button type="button" id="show-reset-btn" style="width:100%;border:none;background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;margin-top:14px;cursor:pointer">Reset password</button>
       </section>
 
       <section id="register-form" class="hidden">
@@ -92,6 +93,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         <div class="field"><label for="reg-code">Unique account code</label><input id="reg-code" autocomplete="off" placeholder="Account code"></div>
         <div id="reg-msg" class="msg err"></div>
         <button class="btn-primary" id="register-btn">Create account</button>
+      </section>
+
+      <section id="reset-form" class="hidden">
+        <div class="field"><label for="reset-email">Email</label><input id="reset-email" type="email" autocomplete="username" placeholder="name@company.com"></div>
+        <div class="field"><label for="reset-pass">New password</label><input id="reset-pass" type="password" autocomplete="new-password" placeholder="Minimum 8 characters"></div>
+        <div class="field"><label for="reset-code">Unique account code</label><input id="reset-code" autocomplete="off" placeholder="Account code"></div>
+        <div id="reset-msg" class="msg err"></div>
+        <button class="btn-primary" id="reset-btn">Reset password</button>
+        <button type="button" id="back-login-btn" style="width:100%;border:none;background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;margin-top:14px;cursor:pointer">Back to log in</button>
       </section>
     </div>
 
@@ -109,6 +119,7 @@ function show(mode) {
   $('tab-register').classList.toggle('active', mode === 'register');
   $('login-form').classList.toggle('hidden', mode !== 'login');
   $('register-form').classList.toggle('hidden', mode !== 'register');
+  $('reset-form').classList.toggle('hidden', mode !== 'reset');
 }
 
 async function api(url, body) {
@@ -160,12 +171,31 @@ async function register() {
   finally { $('register-btn').disabled = false; }
 }
 
+async function resetPassword() {
+  $('reset-msg').className = 'msg err';
+  $('reset-msg').textContent = '';
+  $('reset-btn').disabled = true;
+  try {
+    await api('/api/auth/reset-password', { email: $('reset-email').value, password: $('reset-pass').value, inviteCode: $('reset-code').value });
+    $('reset-msg').className = 'msg ok';
+    $('reset-msg').textContent = 'Password reset. You can now log in.';
+    $('login-email').value = $('reset-email').value;
+    $('login-pass').value = $('reset-pass').value;
+    setTimeout(() => show('login'), 700);
+  } catch (e) { $('reset-msg').className = 'msg err'; $('reset-msg').textContent = e.message; }
+  finally { $('reset-btn').disabled = false; }
+}
+
 $('tab-login').onclick = () => show('login');
 $('tab-register').onclick = () => show('register');
 $('login-btn').onclick = login;
 $('register-btn').onclick = register;
+$('show-reset-btn').onclick = () => { $('reset-email').value = $('login-email').value; show('reset'); };
+$('back-login-btn').onclick = () => show('login');
+$('reset-btn').onclick = resetPassword;
 $('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 $('reg-code').addEventListener('keydown', e => { if (e.key === 'Enter') register(); });
+$('reset-code').addEventListener('keydown', e => { if (e.key === 'Enter') resetPassword(); });
 checkExistingSession();
 </script>
 </body>

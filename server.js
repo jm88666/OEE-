@@ -230,6 +230,24 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ token, user: publicUser(user), expiresAt });
 });
 
+app.post('/api/auth/reset-password', (req, res) => {
+  const { email, password, inviteCode } = req.body || {};
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  const codes = inviteCodes();
+  if (!codes.length) return res.status(503).json({ error: 'Account code is not configured yet.' });
+  if (!codes.includes(String(inviteCode || '').trim())) return res.status(403).json({ error: 'Account code is invalid.' });
+  if (!emailAllowed(cleanEmail)) return res.status(403).json({ error: 'This email is not allowed to reset a password.' });
+  if (String(password || '').length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  const users = readJson('users.json', []);
+  const user = users.find(u => u.email === cleanEmail && u.active !== false);
+  if (!user) return res.status(404).json({ error: 'Account not found.' });
+  user.passwordHash = hashPassword(password);
+  writeJson('users.json', users);
+  revokeSessionsForUser(user.id);
+  audit('password_reset', user);
+  res.json({ ok: true });
+});
+
 app.post('/api/auth/logout', requireUser, (req, res) => {
   const token = (req.get('authorization') || '').replace(/^Bearer\s+/, '');
   writeJson('sessions.json', readJson('sessions.json', []).filter(s => s.token !== token));
