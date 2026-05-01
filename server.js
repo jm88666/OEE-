@@ -239,8 +239,24 @@ app.post('/api/auth/reset-password', (req, res) => {
   if (!emailAllowed(cleanEmail)) return res.status(403).json({ error: 'This email is not allowed to reset a password.' });
   if (String(password || '').length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   const users = readJson('users.json', []);
-  const user = users.find(u => u.email === cleanEmail && u.active !== false);
-  if (!user) return res.status(404).json({ error: 'Account not found.' });
+  let user = users.find(u => u.email === cleanEmail && u.active !== false);
+  if (!user) {
+    const role = users.length === 0 || adminEmails().includes(cleanEmail) ? 'admin' : 'user';
+    user = {
+      id: id('usr'),
+      email: cleanEmail,
+      name: cleanEmail,
+      location: '',
+      role,
+      active: true,
+      createdAt: nowIso(),
+      passwordHash: hashPassword(password),
+    };
+    users.push(user);
+    writeJson('users.json', users);
+    audit('account_created_from_reset', user, { role });
+    return res.json({ ok: true, created: true, user: publicUser(user) });
+  }
   user.passwordHash = hashPassword(password);
   writeJson('users.json', users);
   revokeSessionsForUser(user.id);
