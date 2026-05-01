@@ -48,6 +48,14 @@ const adminEmails = () => (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL |
   .split(',')
   .map(v => v.trim().toLowerCase())
   .filter(Boolean);
+const allowedEmails = () => (process.env.ALLOWED_EMAILS || process.env.ALLOWED_EMAIL || '')
+  .split(',')
+  .map(v => v.trim().toLowerCase())
+  .filter(Boolean);
+const emailAllowed = email => {
+  const list = allowedEmails();
+  return !list.length || list.includes(String(email || '').trim().toLowerCase());
+};
 
 function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -155,6 +163,7 @@ app.post('/api/auth/register', (req, res) => {
   if (!codes.length) return res.status(503).json({ error: 'Account code is not configured yet.' });
   if (!codes.includes(String(inviteCode || '').trim())) return res.status(403).json({ error: 'Account code is invalid.' });
   if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) return res.status(400).json({ error: 'Enter a valid email address.' });
+  if (!emailAllowed(cleanEmail)) return res.status(403).json({ error: 'This email is not allowed to create an account.' });
   if (String(password || '').length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
 
   const users = readJson('users.json', []);
@@ -180,6 +189,7 @@ app.post('/api/auth/register', (req, res) => {
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body || {};
   const cleanEmail = String(email || '').trim().toLowerCase();
+  if (!emailAllowed(cleanEmail)) return res.status(401).json({ error: 'Email or password is incorrect.' });
   const users = readJson('users.json', []);
   const user = users.find(u => u.email === cleanEmail && u.active !== false);
   if (!user || !verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: 'Email or password is incorrect.' });
