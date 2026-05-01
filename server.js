@@ -48,13 +48,15 @@ const adminEmails = () => (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL |
   .split(',')
   .map(v => v.trim().toLowerCase())
   .filter(Boolean);
-const allowedEmails = () => (process.env.ALLOWED_EMAILS || process.env.ALLOWED_EMAIL || '')
-  .split(',')
+const splitList = value => String(value || '')
+  .split(/[,;\n\r]+/)
   .map(v => v.trim().toLowerCase())
   .filter(Boolean);
+const allowedEmails = () => splitList(process.env.ALLOWED_EMAILS || process.env.ALLOWED_EMAIL || '');
 const emailAllowed = email => {
   const list = allowedEmails();
-  return !list.length || list.includes(String(email || '').trim().toLowerCase());
+  if (list.length) return list.includes(String(email || '').trim().toLowerCase());
+  return process.env.ALLOW_ALL_EMAILS === 'true' && !process.env.RAILWAY_ENVIRONMENT_ID;
 };
 
 function ensureDataDir() {
@@ -371,4 +373,5 @@ app.get('/api/auth-check', (req, res) => {
 app.listen(PORT, () => {
   console.log(`JMAnalyzeTool running at http://localhost:${PORT}`);
   console.log(`Data directory: ${DATA_DIR}`);
+  console.log(`Allowed emails configured: ${allowedEmails().length}`);
 });
