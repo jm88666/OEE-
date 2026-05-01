@@ -194,6 +194,8 @@ tr:last-child td{border-bottom:none}
 .loss-box{border:1px solid var(--border);background:var(--glass);border-radius:10px;padding:10px 12px}
 .loss-label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin-bottom:5px}
 .loss-value{font:700 15px 'Space Mono',monospace}
+.chart-toggle-btn{border:1px solid rgba(0,229,160,.3);background:rgba(0,229,160,.07);color:var(--g);border-radius:7px;padding:5px 10px;font:700 11px 'Space Grotesk',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin-top:8px}
+.chart-toggle-btn:hover{background:rgba(0,229,160,.14)}
 
 /* SAVE MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center}
@@ -575,8 +577,46 @@ function analyzeOrderPerformance(x){
   return{orders,byLength,switches,totalLost,hitCount};
 }
 
+function orderSpeedSvg(o){
+  const rows=o.rows||[];const W=560,H=90;const n=rows.length;
+  if(n<3||!o.machineMax)return'';
+  const maxY=o.machineMax;
+  const px=i=>Math.round(i/(n-1)*W);
+  const py=spd=>Math.round(H-Math.min(Math.max(spd,0),maxY)/maxY*H);
+  const pts=rows.map((r,i)=>`${px(i)},${py(r.spd)}`).join(' ');
+  const grid=[33,66,100].map(p=>{const y=Math.round(H-p/100*H);return`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(255,255,255,.07)" stroke-width="1"/>`;}).join('');
+  let stops='',inStop=false,s0=0;
+  rows.forEach((r,i)=>{if(r.spd<=0&&!inStop){inStop=true;s0=i;}else if(r.spd>0&&inStop){stops+=`<rect x="${px(s0)}" y="0" width="${Math.max(2,px(i)-px(s0))}" height="${H}" fill="rgba(255,71,87,.18)"/>`;inStop=false;}});
+  if(inStop)stops+=`<rect x="${px(s0)}" y="0" width="${W-px(s0)}" height="${H}" fill="rgba(255,71,87,.18)"/>`;
+  let bands='';
+  if(o.start&&o.end){const ms=o.end-o.start;(o.breakdown?.spliceWindows||[]).forEach(w=>{if(!w.from||!w.to)return;const x1=Math.max(0,(w.from-o.start)/ms*W);const x2=Math.min(W,(w.to-o.start)/ms*W);bands+=`<rect x="${Math.round(x1)}" y="0" width="${Math.max(3,Math.round(x2-x1))}" height="${H}" fill="rgba(245,158,11,.22)"/>`;});}
+  const maxRef=`<line x1="0" y1="1" x2="${W}" y2="1" stroke="rgba(0,229,160,.25)" stroke-width="1.5" stroke-dasharray="6,4"/>`;
+  return`<div style="margin-top:10px">
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:90px;display:block;border-radius:7px;background:rgba(0,0,0,.3)">
+      ${grid}${stops}${bands}${maxRef}
+      <polyline points="${pts}" fill="none" stroke="var(--g)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);font-weight:700;margin-top:5px">
+      <span>${hhmm(o.start)}</span>
+      <span style="display:flex;gap:12px">
+        <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:2px;background:var(--g);border-radius:1px"></span>Speed</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:8px;background:rgba(245,158,11,.35);border-radius:2px"></span>Splice dip</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:8px;background:rgba(255,71,87,.3);border-radius:2px"></span>Stop</span>
+        <span>${fmt(o.machineMax,0)} m/min max</span>
+      </span>
+      <span>${hhmm(o.end)}</span>
+    </div>
+  </div>`;
+}
+function toggleOrderChart(id,btn){
+  const el=document.getElementById(id);if(!el)return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  btn.innerHTML=open?`<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><polyline points="0,10 3,5 6,7 9,2 12,5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Open speed chart`:`<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><polyline points="0,10 3,5 6,7 9,2 12,5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Close chart`;
+}
 function lossDetailRow(o,i){
   const b=o.breakdown||{};const dips=(b.spliceWindows||[]).slice(0,5).map(w=>`<tr><td class="mono">${timeRange(w.from,w.to)}</td><td class="mono">${minFmt(w.duration)}</td><td class="mono">${fmt(w.spliceSpeed,0)} m/min</td><td class="mono">${fmt(w.avg,0)} m/min</td><td class="mono">${minFmt(w.excess)}</td></tr>`).join('');
+  const chartSvg=orderSpeedSvg(o);
   return`<tr id="loss-detail-${i}" class="loss-detail"><td colspan="10">
     <div style="padding:10px 4px 14px">
       <div style="font-size:13px;font-weight:800;margin-bottom:4px">Max-speed gap breakdown</div>
@@ -590,6 +630,7 @@ function lossDetailRow(o,i){
       </div>
       <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:8px">Duration is the full slow-speed window: deceleration, splice/low-speed plateau and acceleration back up. Splice speed is the most common low speed inside that window. Excess gap is only the part beyond the normal splice allowance.</div>
       <table><thead><tr><th>Dip / splice window</th><th>Duration</th><th>Splice speed</th><th>Avg speed</th><th>Excess gap</th></tr></thead><tbody>${dips||'<tr><td colspan="5" style="color:var(--muted)">No splice-like speed dips detected after startup.</td></tr>'}</tbody></table>
+      ${chartSvg?`<button class="chart-toggle-btn" onclick="toggleOrderChart('ochart-${i}',this)" type="button"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><polyline points="0,10 3,5 6,7 9,2 12,5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Open speed chart</button><div id="ochart-${i}" style="display:none">${chartSvg}</div>`:''}
     </div>
   </td></tr>`;
 }
